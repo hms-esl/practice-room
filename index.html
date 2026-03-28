@@ -18,7 +18,8 @@
         .mic-button.recording { background-color: #ea4335; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(234, 67, 53, 0.7); } 70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(234, 67, 53, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(234, 67, 53, 0); } }
         #status { margin-top: 20px; color: #555; font-weight: 500; min-height: 1.2em; }
-        #response { margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 8px; border-left: 5px solid #34a853; text-align: left; display: none; font-style: italic; color: #333; }
+        #response { margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 8px; border-left: 5px solid #34a853; text-align: left; display: none; font-size: 1.05em; line-height: 1.4; color: #333; }
+        .score-display { font-weight: bold; font-size: 1.2em; color: #1967d2; margin-bottom: 10px; display: block; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
     </style>
 </head>
 <body>
@@ -61,6 +62,9 @@
         recognition.lang = 'en-US';
 
         micBtn.onclick = () => {
+            // Clear previous feedback when starting a new recording
+            responseDiv.style.display = "none";
+            responseDiv.innerHTML = "";
             recognition.start();
             micBtn.classList.add('recording');
             status.innerText = "Listening...";
@@ -69,23 +73,32 @@
         recognition.onresult = async (event) => {
             micBtn.classList.remove('recording');
             const transcript = event.results[0][0].transcript;
-            status.innerText = "Processing: " + transcript;
+            status.innerText = "Grading... Please wait a few seconds.";
 
-            // Send to Google Sheets
+            // Send to Google Sheets and Wait for AI Feedback
             try {
                 const res = await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
-                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8'
+                    },
                     body: JSON.stringify({
                         studentId: studentId,
                         studentName: studentName,
                         lessonId: lessonId,
+                        type: 'assessment', // Added this to route perfectly to your Assessments tab!
                         text: transcript
                     })
                 });
-                status.innerText = "Saved to Sheet!";
-                responseDiv.innerText = "AI: 'Great job, " + studentName + "! I recorded that.'";
+                
+                // Parse the JSON data returned from Gemini
+                const data = await res.json();
+                
+                status.innerText = "Grading Complete!";
+                // Format the live AI feedback on the screen
+                responseDiv.innerHTML = "<span class='score-display'>ELPA21 Score: " + data.score + " / 5</span>" + data.reply;
                 responseDiv.style.display = "block";
+                
             } catch (err) {
                 status.innerText = "Error saving to sheet.";
                 console.error(err);
