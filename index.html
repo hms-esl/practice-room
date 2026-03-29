@@ -3,20 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ELPA21 Speaking Practice</title>
+    <title>ELPA21 Speaking Practice & Lesson</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .container { background-color: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 450px; text-align: center; overflow-y: auto; max-height: 95vh; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        .container { background-color: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 600px; text-align: center; }
         
-        /* New Student Header Style */
         .student-header { background: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #c2d7f9; }
         .student-header h2 { margin: 0; color: #1967d2; font-size: 1.4em; }
         .student-header p { margin: 5px 0 0; color: #5f6368; font-size: 0.9em; font-weight: bold; }
 
-        /* New Prompt Box Style */
+        .lesson-box { background: #ffffff; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #dce6f1; text-align: left; box-shadow: inset 0 0 10px rgba(0,0,0,0.02); }
+        .lesson-box h3 { margin: 0 0 15px 0; color: #1967d2; font-size: 1.3em; border-bottom: 2px solid #e8f0fe; padding-bottom: 8px; }
+        .lesson-content { color: #333; font-size: 1.05em; line-height: 1.6; }
+        
         .prompt-box { background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #ffeeba; text-align: left; }
         .prompt-box h3 { margin: 0 0 10px 0; color: #856404; font-size: 1.1em; border-bottom: 1px solid #ffeeba; padding-bottom: 5px; }
-        .prompt-box p { margin: 0; color: #533f03; font-size: 1em; line-height: 1.4; }
+        .prompt-box p { margin: 0; color: #533f03; font-size: 1em; line-height: 1.4; font-weight: bold; }
 
         .mic-button { background-color: #34a853; color: white; border: none; border-radius: 50%; width: 80px; height: 80px; font-size: 30px; cursor: pointer; transition: transform 0.2s, background-color 0.2s; box-shadow: 0 4px 10px rgba(52, 168, 83, 0.3); margin-top: 10px;}
         .mic-button:active { transform: scale(0.9); background-color: #2d8e47; }
@@ -35,13 +37,18 @@
         <p id="display-id">ID: Checking...</p>
     </div>
 
+    <div class="lesson-box" id="lesson-box">
+        <h3>📚 Today's Lesson</h3>
+        <div class="lesson-content" id="full-lesson-text">Loading your lesson materials...</div>
+    </div>
+
     <div class="prompt-box" id="prompt-box">
-        <h3>🗣️ Speaking Task</h3>
+        <h3>🗣️ Your Speaking Task</h3>
         <p id="prompt-text">Loading your specific prompt...</p>
     </div>
 
     <button id="mic-btn" class="mic-button">🎤</button>
-    <p id="status">Read the prompt above, then tap to answer.</p>
+    <p id="status">Read the lesson above, then tap to answer your speaking task.</p>
     <div id="response"></div>
 </div>
 
@@ -54,41 +61,54 @@
     const studentId = urlParams.get('studentId') || "Unknown";
     const studentName = urlParams.get('studentName') || "Student";
     const lessonId = urlParams.get('lessonId') || "Lsn_001";
-    let activePrompt = "Discuss today's lesson."; // Backup prompt
+    let activePrompt = "Discuss today's lesson."; 
 
     // 3. UPDATE THE HEADER
     document.getElementById('display-name').innerText = "Welcome, " + studentName + "!";
     document.getElementById('display-id').innerText = "Student ID: " + studentId;
 
-    // 4. NEW FUNCTION: FETCH THE LESSON AND EXTRACT THE PROMPT
+    // 4. FETCH THE LESSON AND EXTRACT THE PROMPT
     async function fetchLessonPrompt() {
         try {
             const res = await fetch(GOOGLE_SCRIPT_URL + "?lessonId=" + lessonId);
             const data = await res.json();
             const fullLesson = data.prompt;
 
-            // Smart text cutter: Extracts only the text under the Oral Practice header
-            if (fullLesson && fullLesson.includes("🗣️ ORAL LANGUAGE PRACTICE")) {
-                let parts = fullLesson.split("🗣️ ORAL LANGUAGE PRACTICE");
+            if (fullLesson && fullLesson !== "Lesson ID not found.") {
+                document.getElementById('full-lesson-text').innerHTML = fullLesson.replace(/\n/g, '<br>');
+            } else {
+                document.getElementById('full-lesson-text').innerHTML = "We couldn't find this lesson. Please check with your teacher.";
+            }
+
+            // THE UPGRADED AI-PROOF CUTTER
+            if (fullLesson && fullLesson.includes("ORAL LANGUAGE PRACTICE")) {
+                // Split by just the words, ignoring the emoji
+                let parts = fullLesson.split("ORAL LANGUAGE PRACTICE");
                 let textAfterHeader = parts[1];
                 
-                // Cut it off before the Comprehension Questions start
-                if (textAfterHeader.includes("❓ COMPREHENSION QUESTIONS")) {
-                    activePrompt = textAfterHeader.split("❓ COMPREHENSION QUESTIONS")[0].trim();
+                // Cut off at the comprehension questions
+                if (textAfterHeader.includes("COMPREHENSION")) {
+                    activePrompt = textAfterHeader.split("COMPREHENSION")[0];
                 } else {
-                    activePrompt = textAfterHeader.trim();
+                    activePrompt = textAfterHeader;
                 }
+
+                // Clean up the AI's extra flair (removes "(App Practice)" and formatting asterisks)
+                activePrompt = activePrompt.replace(/\(App Practice\)/gi, "");
+                activePrompt = activePrompt.replace(/\*/g, "");
+                activePrompt = activePrompt.trim();
+
             } else {
                 activePrompt = "Could not find a specific prompt. Please summarize what you learned in today's lesson.";
             }
 
             document.getElementById('prompt-text').innerText = activePrompt;
         } catch (err) {
+            document.getElementById('full-lesson-text').innerHTML = "Network error: Could not load the lesson.";
             document.getElementById('prompt-text').innerText = "Network error: Please summarize what you learned today.";
         }
     }
 
-    // Call the function as soon as the page loads
     fetchLessonPrompt();
 
     // 5. VOICE LOGIC
@@ -125,7 +145,7 @@
                         studentName: studentName,
                         lessonId: lessonId,
                         type: 'assessment',
-                        prompt: activePrompt, // Sends the specific question to the AI Grader!
+                        prompt: activePrompt, 
                         text: transcript
                     })
                 });
