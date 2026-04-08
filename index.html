@@ -3,171 +3,268 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ELPA21 Speaking Practice & Lesson</title>
+    <title>ELL Interactive Lesson</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
-        .container { background-color: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 600px; text-align: center; }
-        
-        .student-header { background: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #c2d7f9; }
-        .student-header h2 { margin: 0; color: #1967d2; font-size: 1.4em; }
-        .student-header p { margin: 5px 0 0; color: #5f6368; font-size: 0.9em; font-weight: bold; }
-
-        .lesson-box { background: #ffffff; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #dce6f1; text-align: left; box-shadow: inset 0 0 10px rgba(0,0,0,0.02); }
-        .lesson-box h3 { margin: 0 0 15px 0; color: #1967d2; font-size: 1.3em; border-bottom: 2px solid #e8f0fe; padding-bottom: 8px; }
-        .lesson-content { color: #333; font-size: 1.05em; line-height: 1.6; }
-        
-        .prompt-box { background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #ffeeba; text-align: left; }
-        .prompt-box h3 { margin: 0 0 10px 0; color: #856404; font-size: 1.1em; border-bottom: 1px solid #ffeeba; padding-bottom: 5px; }
-        .prompt-box p { margin: 0; color: #533f03; font-size: 1em; line-height: 1.4; font-weight: bold; }
-
-        .mic-button { background-color: #34a853; color: white; border: none; border-radius: 50%; width: 80px; height: 80px; font-size: 30px; cursor: pointer; transition: transform 0.2s, background-color 0.2s; box-shadow: 0 4px 10px rgba(52, 168, 83, 0.3); margin-top: 10px;}
-        .mic-button:active { transform: scale(0.9); background-color: #2d8e47; }
-        .mic-button.recording { background-color: #ea4335; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(234, 67, 53, 0.7); } 70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(234, 67, 53, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(234, 67, 53, 0); } }
-        #status { margin-top: 15px; color: #555; font-weight: 500; min-height: 1.2em; }
-        #response { margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 8px; border-left: 5px solid #34a853; text-align: left; display: none; font-size: 1.05em; line-height: 1.4; color: #333; }
-        .score-display { font-weight: bold; font-size: 1.2em; color: #1967d2; margin-bottom: 10px; display: block; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+        :root { --primary: #4A90E2; --secondary: #50E3C2; --bg: #F4F7F9; --error: #FF4B2B; --success: #28a745; }
+        body { font-family: 'Poppins', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; min-height: 100vh; }
+        .container { width: 100%; max-width: 600px; }
+        .card { background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; }
+        .lesson-card { text-align: left; }
+        .lesson-text { white-space: pre-wrap; font-size: 0.95rem; line-height: 1.6; color: #333; }
+        .btn { border: none; padding: 12px 24px; border-radius: 50px; cursor: pointer; font-weight: 600; transition: 0.3s; margin: 10px 0; width: 100%; }
+        .btn-listen { background: var(--secondary); color: white; }
+        .btn-record { background: var(--primary); color: white; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        .recording { background: var(--error) !important; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        #status, #writingStatus { margin-top: 15px; font-size: 0.9rem; color: #666; min-height: 40px; }
+        .feedback-box { margin-top: 20px; padding: 15px; border-radius: 10px; background: #eef7ff; display: none; text-align: left; }
+        .q-block { background: #fdfdfd; border: 1px solid #eee; border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: left; }
+        .q-text { font-weight: 600; margin-bottom: 10px; }
+        .q-option { display: block; margin-bottom: 8px; cursor: pointer; padding: 8px; border-radius: 8px; transition: 0.2s; }
+        .q-option:hover { background: #f0f8ff; }
+        .ai-feedback { margin-top: 10px; padding: 12px; background: #ffebee; border-left: 4px solid var(--error); border-radius: 4px; font-size: 0.9rem; display: none; }
+        textarea { width: 100%; padding: 15px; border-radius: 10px; border: 1px solid #ccc; font-family: inherit; font-size: 1rem; box-sizing: border-box; resize: vertical; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="student-header">
-        <h2 id="display-name">Hello, Student!</h2>
-        <p id="display-id">ID: Checking...</p>
+    <div class="card lesson-card">
+        <h2>📚 Today's Lesson</h2>
+        <div id="lessonContent" class="lesson-text">Loading materials...</div>
     </div>
 
-    <div class="lesson-box" id="lesson-box">
-        <h3>📚 Today's Lesson</h3>
-        <div class="lesson-content" id="full-lesson-text">Loading your lesson materials...</div>
-    </div>
+    <div class="card">
+        <h2 id="taskTitle">Loading Task...</h2>
+        
+        <div id="speakingUI" style="display: none;">
+            <p id="promptText" style="font-style: italic; color: #555; margin-bottom: 15px;">Fetching prompt...</p>
+            <button class="btn btn-listen" onclick="listenToPrompt()">🔊 Listen to Prompt</button>
+            <button id="recordBtn" class="btn btn-record" onclick="toggleRecording()">🎤 Start Recording</button>
+            <div id="status">Ready!</div>
+            <div id="feedback-box" class="feedback-box">
+                <strong>ELPA21 Score: <span id="scoreDisplay">-</span>/5</strong>
+                <p id="replyDisplay"></p>
+            </div>
+        </div>
 
-    <div class="prompt-box" id="prompt-box">
-        <h3>🗣️ Your Speaking Task</h3>
-        <p id="prompt-text">Loading your specific prompt...</p>
-    </div>
+        <div id="writingUI" style="display: none;">
+            <p id="writingPromptText" style="font-style: italic; color: #555; margin-bottom: 15px;">Fetching prompt...</p>
+            <textarea id="writingInput" rows="6" placeholder="Type your response here..."></textarea>
+            <button id="submitWritingBtn" class="btn btn-record" onclick="submitWriting()">📝 Submit Writing</button>
+            <div id="writingStatus">Ready!</div>
+            <div id="writing-feedback-box" class="feedback-box">
+                <strong>ELPA21 Score: <span id="writingScoreDisplay">-</span>/5</strong>
+                <p id="writingReplyDisplay"></p>
+            </div>
+        </div>
 
-    <button id="mic-btn" class="mic-button">🎤</button>
-    <p id="status">Read the lesson above, then tap to answer your speaking task.</p>
-    <div id="response"></div>
+        <div id="comprehensionUI" style="display: none;">
+            <div id="quizContainer"></div>
+            <button id="submitQuizBtn" class="btn btn-record" onclick="submitQuiz()" style="display:none;">Submit Answers</button>
+            <div id="quizStatus" style="margin-top: 15px; font-weight: 600;"></div>
+        </div>
+    </div>
 </div>
 
 <script>
-    // 1. YOUR SETTINGS
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxEVT8PObx2cNMS-fnJThz1BPnvxnMXFwdl7nXHnKfzv8V9EvMuYH_tupIgkaYnLAz1/exec";
-
-    // 2. GRAB DATA FROM THE URL
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyvucmpyniDeXtsY8fSIBVU57o0qfXtyIEXEoM0Pf2-sb3JbfnRQtY5ax1tj0C8fCJ9zw/exec"; 
     const urlParams = new URLSearchParams(window.location.search);
-    const studentId = urlParams.get('studentId') || "Unknown";
-    const studentName = urlParams.get('studentName') || "Student";
-    const lessonId = urlParams.get('lessonId') || "Lsn_001";
-    let activePrompt = "Discuss today's lesson."; 
+    const lessonId = urlParams.get('lessonId');
+    const studentId = urlParams.get('studentId');
+    const taskType = urlParams.get('taskType') || 'speaking';
 
-    // 3. UPDATE THE HEADER
-    document.getElementById('display-name').innerText = "Welcome, " + studentName + "!";
-    document.getElementById('display-id').innerText = "Student ID: " + studentId;
+    let currentPrompt = "";
+    let isRecording = false;
+    let recognition;
+    let quizData = [];
+    let attemptNum = 1;
+    let scoreAttempt1 = 0;
 
-    // 4. FETCH THE LESSON AND EXTRACT THE PROMPT
-    async function fetchLessonPrompt() {
+    async function loadData() {
+        if (!lessonId) {
+            document.getElementById('lessonContent').innerText = "Missing Lesson ID.";
+            return;
+        }
         try {
-            const res = await fetch(GOOGLE_SCRIPT_URL + "?lessonId=" + lessonId);
-            const data = await res.json();
-            const fullLesson = data.prompt;
+            const response = await fetch(`${SCRIPT_URL}?lessonId=${lessonId}`);
+            const data = await response.json();
+            document.getElementById('lessonContent').innerText = data.fullLesson || "No text available.";
+            
+            currentPrompt = data.prompt || "Please discuss today's lesson.";
 
-            if (fullLesson && fullLesson !== "Lesson ID not found.") {
-                document.getElementById('full-lesson-text').innerHTML = fullLesson.replace(/\n/g, '<br>');
+            if (taskType === 'comprehension') {
+                document.getElementById('taskTitle').innerText = "🧠 Comprehension Task";
+                document.getElementById('comprehensionUI').style.display = "block";
+                buildQuiz(data.comprehension);
+            } else if (taskType === 'writing') {
+                document.getElementById('taskTitle').innerText = "📝 Writing Task";
+                document.getElementById('writingUI').style.display = "block";
+                document.getElementById('writingPromptText').innerText = currentPrompt;
             } else {
-                document.getElementById('full-lesson-text').innerHTML = "We couldn't find this lesson. Please check with your teacher.";
+                document.getElementById('taskTitle').innerText = "🗣️ Speaking Task";
+                document.getElementById('speakingUI').style.display = "block";
+                document.getElementById('promptText').innerText = currentPrompt;
             }
-
-            // THE UPGRADED AI-PROOF CUTTER
-            if (fullLesson && fullLesson.includes("ORAL LANGUAGE PRACTICE")) {
-                // Split by just the words, ignoring the emoji
-                let parts = fullLesson.split("ORAL LANGUAGE PRACTICE");
-                let textAfterHeader = parts[1];
-                
-                // Cut off at the comprehension questions
-                if (textAfterHeader.includes("COMPREHENSION")) {
-                    activePrompt = textAfterHeader.split("COMPREHENSION")[0];
-                } else {
-                    activePrompt = textAfterHeader;
-                }
-
-                // Clean up the AI's extra flair (removes "(App Practice)" and formatting asterisks)
-                activePrompt = activePrompt.replace(/\(App Practice\)/gi, "");
-                activePrompt = activePrompt.replace(/\*/g, "");
-                activePrompt = activePrompt.trim();
-
-            } else {
-                activePrompt = "Could not find a specific prompt. Please summarize what you learned in today's lesson.";
-            }
-
-            document.getElementById('prompt-text').innerText = activePrompt;
-        } catch (err) {
-            document.getElementById('full-lesson-text').innerHTML = "Network error: Could not load the lesson.";
-            document.getElementById('prompt-text').innerText = "Network error: Please summarize what you learned today.";
+        } catch (e) {
+            document.getElementById('lessonContent').innerText = "Error connecting to Google Sheets.";
         }
     }
 
-    fetchLessonPrompt();
-
-    // 5. VOICE LOGIC
-    const micBtn = document.getElementById('mic-btn');
-    const status = document.getElementById('status');
-    const responseDiv = document.getElementById('response');
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-        status.innerText = "Error: Browser not supported. Use Chrome.";
-    } else {
-        const recognition = new SpeechRecognition();
-        recognition.lang = 'en-US';
-
-        micBtn.onclick = () => {
-            responseDiv.style.display = "none";
-            responseDiv.innerHTML = "";
-            recognition.start();
-            micBtn.classList.add('recording');
-            status.innerText = "Listening...";
-        };
-
-        recognition.onresult = async (event) => {
-            micBtn.classList.remove('recording');
-            const transcript = event.results[0][0].transcript;
-            status.innerText = "Grading against your prompt... Please wait.";
-
-            try {
-                const res = await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({
-                        studentId: studentId,
-                        studentName: studentName,
-                        lessonId: lessonId,
-                        type: 'assessment',
-                        prompt: activePrompt, 
-                        text: transcript
-                    })
-                });
-                
-                const data = await res.json();
-                
-                status.innerText = "Grading Complete!";
-                responseDiv.innerHTML = "<span class='score-display'>ELPA21 Score: " + data.score + " / 5</span>" + data.reply;
-                responseDiv.style.display = "block";
-                
-            } catch (err) {
-                status.innerText = "Error saving to sheet.";
-                console.error(err);
-            }
-        };
-
-        recognition.onerror = () => {
-            micBtn.classList.remove('recording');
-            status.innerText = "Try again!";
-        };
+    function listenToPrompt() {
+        window.speechSynthesis.speak(new SpeechSynthesisUtterance(currentPrompt));
     }
-</script>
 
+    // --- SPEAKING LOGIC ---
+    function toggleRecording() {
+        const btn = document.getElementById('recordBtn');
+        const status = document.getElementById('status');
+        if (!isRecording) {
+            window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.onresult = (e) => submitToAI(e.results[0][0].transcript);
+            recognition.start();
+            btn.innerText = "Stop & Submit";
+            btn.classList.add('recording');
+            status.innerText = "Listening...";
+            isRecording = true;
+        } else {
+            recognition.stop();
+            btn.innerText = "Processing...";
+            btn.classList.remove('recording');
+            status.innerText = "Grading against ELPA21 rubric...";
+            isRecording = false;
+        }
+    }
+
+    async function submitToAI(transcript) {
+        try {
+            const res = await fetch(SCRIPT_URL, {
+                method: "POST",
+                body: JSON.stringify({ 
+                    studentId, 
+                    lessonId, 
+                    taskType: "Speaking", 
+                    prompt: currentPrompt, 
+                    text: transcript, 
+                    type: "assessment" 
+                })
+            });
+            const result = await res.json();
+            document.getElementById('feedback-box').style.display = "block";
+            document.getElementById('scoreDisplay').innerText = result.score;
+            document.getElementById('replyDisplay').innerHTML = result.reply;
+            document.getElementById('status').innerText = "Saved to spreadsheet!";
+        } catch (e) { 
+            console.error(e); 
+            document.getElementById('status').innerText = "Error saving. Please try again.";
+        }
+        document.getElementById('recordBtn').innerText = "Start Recording";
+    }
+
+    // --- WRITING LOGIC ---
+    async function submitWriting() {
+        const text = document.getElementById('writingInput').value;
+        const btn = document.getElementById('submitWritingBtn');
+        const status = document.getElementById('writingStatus');
+        
+        if (!text.trim()) {
+            alert("Please type your answer first.");
+            return;
+        }
+        
+        btn.innerText = "Grading...";
+        btn.disabled = true;
+        status.innerText = "Grading against ELPA21 rubric...";
+        
+        try {
+            const res = await fetch(SCRIPT_URL, {
+                method: "POST",
+                body: JSON.stringify({ 
+                    studentId, 
+                    lessonId, 
+                    taskType: "Writing", 
+                    prompt: currentPrompt, 
+                    text: text, 
+                    type: "assessment" 
+                })
+            });
+            const result = await res.json();
+            document.getElementById('writing-feedback-box').style.display = "block";
+            document.getElementById('writingScoreDisplay').innerText = result.score;
+            document.getElementById('writingReplyDisplay').innerHTML = result.reply;
+            status.innerText = "Saved to spreadsheet!";
+        } catch (e) { 
+            console.error(e); 
+            status.innerText = "Error saving. Please try again.";
+        }
+        btn.innerText = "📝 Submit Writing";
+        btn.disabled = false;
+    }
+
+    // --- COMPREHENSION LOGIC ---
+    function buildQuiz(raw) {
+        if (!raw) return;
+        const blocks = ("\n" + raw).split(/\n(?=\d+\.\s)/).filter(c => c.trim().length > 0);
+        blocks.forEach((block, index) => {
+            let lines = block.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            let q = { id: index, text: "", options: {}, answer: [], feedback: "" };
+            lines.forEach(line => {
+                if (/^[A-D]\)/i.test(line)) q.options[line.charAt(0).toUpperCase()] = line.substring(2).trim();
+                else if (/^Answer:/i.test(line)) q.answer = line.substring(7).toUpperCase().match(/[A-D]/g) || [];
+                else if (/^Feedback:/i.test(line)) q.feedback = line.substring(9).trim();
+                else if (Object.keys(q.options).length === 0) q.text += " " + line;
+            });
+            if (Object.keys(q.options).length > 0) quizData.push(q);
+        });
+        let html = "";
+        quizData.forEach(q => {
+            html += `<div class="q-block">
+                <div class="q-text">${q.text}</div>`;
+            for (const [letter, text] of Object.entries(q.options)) {
+                html += `<label class="q-option" id="label_${q.id}_${letter}"><input type="radio" name="q_${q.id}" value="${letter}"> <strong>${letter})</strong> ${text}</label>`;
+            }
+            html += `<div class="ai-feedback" id="fb_${q.id}"><strong>AI Guide:</strong> ${q.feedback}</div></div>`;
+        });
+        document.getElementById('quizContainer').innerHTML = html;
+        document.getElementById('submitQuizBtn').style.display = "block";
+    }
+
+    async function submitQuiz() {
+        let currentScore = 0;
+        let answers = "";
+        quizData.forEach(q => {
+            let selected = document.querySelector(`input[name="q_${q.id}"]:checked`)?.value;
+            let isCorrect = (selected === q.answer[0]);
+            if (isCorrect) currentScore++;
+            else if (attemptNum === 1) document.getElementById(`fb_${q.id}`).style.display = "block";
+            answers += `Q${q.id+1}:${selected || "N"} `;
+        });
+        if (attemptNum === 1 && currentScore < quizData.length) {
+            attemptNum = 2;
+            document.getElementById('quizStatus').innerText = "Try again with AI feedback!";
+            scoreAttempt1 = currentScore;
+        } else {
+            document.getElementById('quizStatus').innerText = "Saving results...";
+            await fetch(SCRIPT_URL, {
+                method: "POST",
+                body: JSON.stringify({ 
+                    studentId, 
+                    lessonId, 
+                    taskType: "Comprehension", 
+                    studentAnswers: answers, 
+                    score1: scoreAttempt1 || currentScore, 
+                    score2: currentScore,
+                    type: "assessment"
+                })
+            });
+            document.getElementById('quizStatus').innerText = "Saved to spreadsheet!";
+        }
+    }
+
+    window.onload = loadData;
+</script>
 </body>
 </html>
