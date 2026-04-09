@@ -37,7 +37,7 @@
 
 <div class="container">
     <div class="student-header">
-        <h2 id="display-name">Hello, Student!</h2>
+        <h2 id="display-name">Welcome!</h2>
         <p id="display-id">ID: Checking...</p>
     </div>
 
@@ -73,14 +73,13 @@
     // 2. GRAB DATA FROM THE URL
     const urlParams = new URLSearchParams(window.location.search);
     const studentId = urlParams.get('studentId') || "Unknown";
-    const studentName = urlParams.get('studentName') || "Student";
+    const studentName = "Student"; // Hardcoded to avoid relying on URL parameter
     const lessonId = urlParams.get('lessonId') || "Lsn_001";
     
     let audioData = { story: "", question: "" };
     let activeQuestion = ""; 
 
     // 3. UPDATE THE HEADER
-    document.getElementById('display-name').innerText = "Welcome, " + studentName + "!";
     document.getElementById('display-id').innerText = "Student ID: " + studentId;
 
     // 4. FETCH THE LESSON AND EXTRACT SECTIONS
@@ -170,7 +169,7 @@
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify({
                     studentId: studentId,
-                    studentName: studentName,
+                    studentName: studentName, // Sends "Student"
                     lessonId: lessonId,
                     type: 'assessment',
                     taskType: 'Listening',  // <-- Ensures it logs correctly in your sheet
