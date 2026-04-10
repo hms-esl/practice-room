@@ -84,25 +84,36 @@
 
         // 1. INITIALIZE PAGE
         async function init() {
-            if (!lessonId) { alert("Missing Lesson ID"); return; }
+            if (!lessonId) { 
+                document.getElementById('lessonContent').innerHTML = "Missing Lesson ID in the URL."; 
+                return; 
+            }
             
             try {
                 const response = await fetch(`${WEB_APP_URL}?lessonId=${lessonId}`);
                 const data = await response.json();
+                
+                // CRITICAL FIX: Check if Google sent back an error message before parsing
+                if (data.error) {
+                    throw new Error("Google Script reported: " + data.error);
+                }
+
                 lessonData = parseLesson(data.fullLesson);
                 renderPage();
+                
             } catch (e) {
                 document.getElementById('lessonContent').innerHTML = `
                     <div class="bg-red-50 p-4 border-l-4 border-red-500 text-left">
-                        <h3 class="font-bold text-red-700">Connection Error</h3>
-                        <p class="text-red-600 mt-2">The page failed to connect to the database.</p>
+                        <h3 class="font-bold text-red-700">System Diagnostic</h3>
+                        <p class="text-red-600 mt-2">The task engine encountered an issue.</p>
                         <ul class="text-sm text-slate-600 mt-4 list-disc pl-5">
                             <li><b>ID Looked For:</b> ${lessonId}</li>
-                            <li><b>Exact Error Code:</b> ${e.message}</li>
+                            <li><b>Exact Error:</b> ${e.message}</li>
                         </ul>
                     </div>
                 `;
             }
+        }
 
         // 2. PARSE LESSON TAGS
         function parseLesson(rawText) {
