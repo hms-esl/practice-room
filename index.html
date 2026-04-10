@@ -3,196 +3,211 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ELPA21 Listening Task</title>
+    <title>GMSD Practice Room</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
-        .container { background-color: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 600px; text-align: center; }
-        
-        .student-header { background: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #c2d7f9; }
-        .student-header h2 { margin: 0; color: #1967d2; font-size: 1.4em; }
-        .student-header p { margin: 5px 0 0; color: #5f6368; font-size: 0.9em; font-weight: bold; }
-
-        .lesson-box { background: #ffffff; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #dce6f1; text-align: left; box-shadow: inset 0 0 10px rgba(0,0,0,0.02); }
-        .lesson-box h3 { margin: 0 0 15px 0; color: #1967d2; font-size: 1.3em; border-bottom: 2px solid #e8f0fe; padding-bottom: 8px; }
-        .lesson-content { color: #333; font-size: 1.05em; line-height: 1.6; }
-        .lesson-section-title { font-weight: bold; color: #1967d2; margin-top: 15px; margin-bottom: 5px;}
-        
-        .prompt-box { background: #fff3cd; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #ffeeba; text-align: left; }
-        .prompt-box h3 { margin: 0 0 15px 0; color: #856404; font-size: 1.2em; border-bottom: 1px solid #ffeeba; padding-bottom: 8px; }
-        .prompt-box p { margin: 0; color: #533f03; font-size: 1.05em; line-height: 1.4; font-weight: bold; }
-
-        .btn-listen { background: #4CAF50; color: white; padding: 10px 15px; border: none; border-radius: 8px; cursor: pointer; margin-right: 10px; font-weight: bold; font-size: 1em; transition: background-color 0.2s;}
-        .btn-listen:hover { background: #45a049; }
-        .btn-submit { background: #1967d2; color: white; padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1em; width: 100%; margin-top: 15px; transition: background-color 0.2s;}
-        .btn-submit:hover { background: #1557b0; }
-        
-        textarea { width: 100%; height: 100px; margin-top: 15px; padding: 12px; border-radius: 8px; border: 1px solid #ccc; font-family: inherit; font-size: 1em; box-sizing: border-box; resize: vertical;}
-        
-        #status { margin-top: 15px; color: #555; font-weight: bold; min-height: 1.2em; }
-        #response { margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 8px; border-left: 5px solid #34a853; text-align: left; display: none; font-size: 1.05em; line-height: 1.4; color: #333; }
-        .score-display { font-weight: bold; font-size: 1.2em; color: #1967d2; margin-bottom: 10px; display: block; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+        .hidden { display: none; }
+        .recording-pulse { animation: pulse 1.5s infinite; }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
     </style>
 </head>
-<body>
+<body class="bg-slate-50 min-h-screen p-4 md:p-8 font-sans">
 
-<div class="container">
-    <div class="student-header">
-        <h2 id="display-name">Welcome!</h2>
-        <p id="display-id">ID: Checking...</p>
-    </div>
-
-    <div class="lesson-box" id="lesson-box">
-        <h3>📚 Today's Lesson</h3>
-        <div id="full-lesson-text">Loading your lesson materials...</div>
-    </div>
-
-    <div class="prompt-box" id="prompt-box">
-        <h3>🎧 Listening Task</h3>
-        
-        <div style="margin-bottom: 15px;">
-            <button class="btn-listen" onclick="playAudio('story')">▶️ Play Story</button>
-            <button class="btn-listen" onclick="playAudio('question')">▶️ Play Question</button>
+    <div class="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
+        <div class="bg-blue-600 p-6 text-white">
+            <h1 id="taskTitle" class="text-2xl font-bold">Loading Lesson...</h1>
+            <p id="taskSubtitle" class="text-blue-100 italic">Preparing your activities</p>
         </div>
 
-        <p id="question-text">Loading your question...</p>
-        <p id="scaffold-options" style="font-weight: normal; color: #444; margin-top: 10px;"></p>
+        <div class="p-6 space-y-6">
+            
+            <div id="lessonContent" class="prose max-w-none text-slate-700">
+                <p>Fetching your lesson data from the vault...</p>
+            </div>
 
-        <textarea id="studentAnswer" placeholder="Type your answer here..."></textarea>
-        
-        <button class="btn-submit" onclick="submitTask()">Submit Answer</button>
-        <div id="status"></div>
+            <hr class="border-slate-100">
+
+            <div id="taskInterface" class="space-y-4">
+                
+                <div id="ui-listening" class="hidden space-y-4">
+                    <div class="flex gap-4">
+                        <button onclick="speakText('audioScript')" class="flex-1 bg-blue-100 text-blue-700 p-4 rounded-xl font-bold hover:bg-blue-200 transition">🎧 Play Story</button>
+                        <button onclick="speakText('question')" class="flex-1 bg-green-100 text-green-700 p-4 rounded-xl font-bold hover:bg-green-200 transition">❓ Play Question</button>
+                    </div>
+                </div>
+
+                <div id="ui-speaking" class="hidden text-center space-y-4">
+                    <p class="text-sm font-semibold text-slate-500 uppercase tracking-wide">Record your response below</p>
+                    <button id="micBtn" onclick="toggleRecording()" class="w-24 h-24 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition flex items-center justify-center mx-auto">
+                        <svg id="micIcon" xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-20a3 3 0 00-3 3v1h6V7a3 3 0 00-3-3z" />
+                        </svg>
+                    </button>
+                    <p id="recStatus" class="text-slate-400 font-medium">Tap to start recording</p>
+                </div>
+
+                <div id="responseContainer" class="space-y-2">
+                    <label class="block text-sm font-bold text-slate-600">Your Response:</label>
+                    <textarea id="studentText" rows="4" class="w-full border-2 border-slate-200 rounded-xl p-4 focus:border-blue-500 outline-none transition" placeholder="Type or record your answer here..."></textarea>
+                </div>
+
+                <button id="submitBtn" onclick="submitToAppSheet()" class="w-full bg-slate-800 text-white py-4 rounded-xl font-bold text-lg hover:bg-slate-900 transition shadow-lg">Submit Assignment</button>
+            </div>
+        </div>
     </div>
 
-    <div id="response"></div>
-</div>
+    <div id="overlay" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center hidden text-white text-center z-50">
+        <div class="p-8">
+            <div id="loader" class="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto mb-4"></div>
+            <h2 id="overlayText" class="text-2xl font-bold">Processing your work...</h2>
+        </div>
+    </div>
 
-<script>
-    // 1. YOUR SETTINGS
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxEVT8PObx2cNMS-fnJThz1BPnvxnMXFwdl7nXHnKfzv8V9EvMuYH_tupIgkaYnLAz1/exec";
+    <script>
+        // CONFIGURATION - CHANGE THIS TO YOUR WEB APP URL
+        const WEB_APP_URL = "PASTE_YOUR_NEW_APPS_SCRIPT_DEPLOYMENT_URL_HERE";
 
-    // 2. GRAB DATA FROM THE URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const studentId = urlParams.get('studentId') || "Unknown";
-    const studentName = "Student"; // Hardcoded to avoid relying on URL parameter
-    const lessonId = urlParams.get('lessonId') || "Lsn_001";
-    
-    let audioData = { story: "", question: "" };
-    let activeQuestion = ""; 
+        const urlParams = new URLSearchParams(window.location.search);
+        const lessonId = urlParams.get('lessonId');
+        const studentId = urlParams.get('studentId');
+        const taskType = (urlParams.get('taskType') || 'listening').toLowerCase();
 
-    // 3. UPDATE THE HEADER
-    document.getElementById('display-id').innerText = "Student ID: " + studentId;
+        let lessonData = {};
+        let mediaRecorder;
+        let audioChunks = [];
+        let audioBase64 = "";
+        let recognition;
 
-    // 4. FETCH THE LESSON AND EXTRACT SECTIONS
-    async function fetchLessonPrompt() {
-        try {
-            const res = await fetch(GOOGLE_SCRIPT_URL + "?lessonId=" + lessonId);
-            const data = await res.json();
-            const fullLesson = data.fullLesson; // Updated to match Code.gs
-
-            if (fullLesson && fullLesson !== "Lesson not found.") {
-                
-                // --- Extract "Today's Lesson" Pieces ---
-                let anchorText = fullLesson.split("📖 ANCHOR")[1]?.split("📝 SUMMARY")[0]?.trim() || "";
-                let summaryText = fullLesson.split("📝 SUMMARY")[1]?.split("🧠 ACADEMIC VOCABULARY")[0]?.trim() || "";
-                let vocabText = fullLesson.split("🧠 ACADEMIC VOCABULARY")[1]?.split("🎧 LISTENING TASK")[0]?.trim() || "";
-                
-                document.getElementById('full-lesson-text').innerHTML = `
-                    <div class="lesson-section-title">📖 Anchor</div>
-                    <div class="lesson-content">${anchorText}</div>
-                    <div class="lesson-section-title">📝 Summary</div>
-                    <div class="lesson-content">${summaryText}</div>
-                    <div class="lesson-section-title">🧠 Academic Vocabulary</div>
-                    <div class="lesson-content">${vocabText.replace(/\n/g, '<br>')}</div>
-                `;
-
-                // --- Extract "Listening Task" Pieces ---
-                audioData.story = fullLesson.match(/<AUDIO_SCRIPT>([\s\S]*?)<\/AUDIO_SCRIPT>/)?.[1]?.trim() || "";
-                audioData.question = fullLesson.match(/<QUESTION>([\s\S]*?)<\/QUESTION>/)?.[1]?.trim() || "";
-                activeQuestion = audioData.question;
-                
-                // Get the multiple choice options if they exist
-                let optionsText = fullLesson.split("<\/QUESTION>")[1]?.split("🗣️ SPEAKING TASK")[0]?.trim() || "";
-
-                document.getElementById('question-text').innerText = audioData.question;
-                // Strip out formatting brackets from options if necessary and format cleanly
-                document.getElementById('scaffold-options').innerHTML = optionsText.replace(/\n/g, '<br>');
-
-            } else {
-                document.getElementById('full-lesson-text').innerHTML = "We couldn't find this lesson. Please check with your teacher.";
-                document.getElementById('question-text').innerText = "No listening task found.";
+        // 1. INITIALIZE PAGE
+        async function init() {
+            if (!lessonId) { alert("Missing Lesson ID"); return; }
+            
+            try {
+                const response = await fetch(`${WEB_APP_URL}?lessonId=${lessonId}`);
+                const data = await response.json();
+                lessonData = parseLesson(data.fullLesson);
+                renderPage();
+            } catch (e) {
+                document.getElementById('lessonContent').innerHTML = "Error loading lesson data.";
             }
-
-        } catch (err) {
-            document.getElementById('full-lesson-text').innerHTML = "Network error: Could not load the lesson.";
-            document.getElementById('question-text').innerText = "Network error.";
-        }
-    }
-
-    fetchLessonPrompt();
-
-    // 5. TEXT-TO-SPEECH LOGIC
-    function playAudio(type) {
-        window.speechSynthesis.cancel(); 
-        let textToRead = type === 'story' ? audioData.story : audioData.question;
-        
-        if(!textToRead) {
-            alert("Audio is still loading or not available for this lesson.");
-            return;
         }
 
-        let utterance = new SpeechSynthesisUtterance(textToRead);
-        utterance.lang = 'en-US';
-        // Optional: Slow down the speech rate slightly for ELL students
-        utterance.rate = 0.9; 
-        window.speechSynthesis.speak(utterance);
-    }
-
-    // 6. SUBMIT TO AI FOR GRADING
-    async function submitTask() {
-        const answerText = document.getElementById('studentAnswer').value.trim();
-        const statusDiv = document.getElementById('status');
-        const responseDiv = document.getElementById('response');
-        
-        if(!answerText) {
-            statusDiv.innerText = "Please type your answer before submitting.";
-            statusDiv.style.color = "red";
-            return;
+        // 2. PARSE LESSON TAGS
+        function parseLesson(rawText) {
+            const anchor = rawText.split("📝 SUMMARY")[0] || "";
+            const audioScript = rawText.match(/<AUDIO_SCRIPT>([\s\S]*?)<\/AUDIO_SCRIPT>/)?.[1] || "";
+            const question = rawText.match(/<QUESTION>([\s\S]*?)<\/QUESTION>/)?.[1] || "";
+            const speakingPrompt = rawText.split("🗣️ SPEAKING TASK")[1]?.split("❓")[0] || "";
+            
+            return { anchor, audioScript, question, speakingPrompt, rawText };
         }
 
-        statusDiv.innerText = "Submitting to AI Teacher for grading... Please wait.";
-        statusDiv.style.color = "#1967d2";
-        responseDiv.style.display = "none";
-
-        try {
-            const res = await fetch(GOOGLE_SCRIPT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({
-                    studentId: studentId,
-                    studentName: studentName, // Sends "Student"
-                    lessonId: lessonId,
-                    type: 'assessment',
-                    taskType: 'Listening',  // <-- Ensures it logs correctly in your sheet
-                    prompt: activeQuestion, 
-                    text: answerText
-                })
-            });
+        // 3. RENDER UI BASED ON TASK TYPE
+        function renderPage() {
+            document.getElementById('taskTitle').innerText = taskType.charAt(0).toUpperCase() + taskType.slice(1) + " Task";
             
-            const data = await res.json();
-            
-            statusDiv.innerText = "Grading Complete!";
-            statusDiv.style.color = "green";
-            
-            responseDiv.innerHTML = "<span class='score-display'>ELPA21 Score: " + (data.score || "Pending") + " / 5</span>" + (data.reply || "No feedback generated.");
-            responseDiv.style.display = "block";
-            
-        } catch (err) {
-            statusDiv.innerText = "Error saving to sheet. Please try again.";
-            statusDiv.style.color = "red";
-            console.error(err);
+            if (taskType === "listening") {
+                document.getElementById('ui-listening').classList.remove('hidden');
+                document.getElementById('lessonContent').innerHTML = lessonData.anchor;
+                document.getElementById('taskSubtitle').innerText = "Listen carefully to the story.";
+            } else if (taskType === "speaking") {
+                document.getElementById('ui-speaking').classList.remove('hidden');
+                document.getElementById('lessonContent').innerHTML = `<div class='bg-yellow-50 p-4 border-l-4 border-yellow-400'>${lessonData.speakingPrompt}</div>`;
+                document.getElementById('taskSubtitle').innerText = "Speak clearly into your microphone.";
+                setupSTT();
+            } else {
+                document.getElementById('lessonContent').innerHTML = lessonData.rawText;
+            }
         }
-    }
-</script>
 
+        // 4. AUDIO TOOLS (TTS)
+        function speakText(key) {
+            const text = lessonData[key];
+            const msg = new SpeechSynthesisUtterance(text);
+            window.speechSynthesis.speak(msg);
+        }
+
+        // 5. SPEAKING LOGIC (STT + Recording)
+        function setupSTT() {
+            window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (window.SpeechRecognition) {
+                recognition = new SpeechRecognition();
+                recognition.interimResults = true;
+                recognition.onresult = (e) => {
+                    const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
+                    document.getElementById('studentText').value = transcript;
+                };
+            }
+        }
+
+        async function toggleRecording() {
+            const btn = document.getElementById('micBtn');
+            const status = document.getElementById('recStatus');
+
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+                if (recognition) recognition.stop();
+                btn.classList.remove('recording-pulse', 'bg-red-700');
+                status.innerText = "Processing audio...";
+            } else {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.readAsDataURL(audioBlob);
+                    reader.onloadend = () => { audioBase64 = reader.result; status.innerText = "Recording saved!"; };
+                };
+
+                mediaRecorder.start();
+                if (recognition) recognition.start();
+                btn.classList.add('recording-pulse', 'bg-red-700');
+                status.innerText = "🔴 RECORDING... Speak now";
+            }
+        }
+
+        // 6. SUBMIT TO GOOGLE
+        async function submitToAppSheet() {
+            const text = document.getElementById('studentText').value;
+            if (!text) { alert("Please provide a response."); return; }
+
+            document.getElementById('overlay').classList.remove('hidden');
+
+            const payload = {
+                type: "assessment",
+                taskType: taskType,
+                studentId: studentId,
+                lessonId: lessonId,
+                text: text,
+                prompt: taskType === "listening" ? lessonData.question : lessonData.speakingPrompt,
+                audioBase64: audioBase64
+            };
+
+            try {
+                const res = await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                
+                document.getElementById('loader').classList.add('hidden');
+                document.getElementById('overlayText').innerHTML = `✅ Done!<br><br>Score: ${result.score}/5<br><p class='text-sm mt-2'>${result.reply}</p>`;
+                
+                setTimeout(() => window.close(), 5000);
+            } catch (e) {
+                alert("Submission failed. Check your internet connection.");
+                document.getElementById('overlay').classList.add('hidden');
+            }
+        }
+
+        init();
+    </script>
 </body>
 </html>
