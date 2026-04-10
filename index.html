@@ -92,9 +92,17 @@
                 lessonData = parseLesson(data.fullLesson);
                 renderPage();
             } catch (e) {
-                document.getElementById('lessonContent').innerHTML = "Error loading lesson data.";
+                document.getElementById('lessonContent').innerHTML = `
+                    <div class="bg-red-50 p-4 border-l-4 border-red-500 text-left">
+                        <h3 class="font-bold text-red-700">Connection Error</h3>
+                        <p class="text-red-600 mt-2">The page failed to connect to the database.</p>
+                        <ul class="text-sm text-slate-600 mt-4 list-disc pl-5">
+                            <li><b>ID Looked For:</b> ${lessonId}</li>
+                            <li><b>Exact Error Code:</b> ${e.message}</li>
+                        </ul>
+                    </div>
+                `;
             }
-        }
 
         // 2. PARSE LESSON TAGS
         function parseLesson(rawText) {
