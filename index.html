@@ -27,6 +27,10 @@
         input[type="radio"] { margin-right: 10px; transform: scale(1.2); }
         
         #status { text-align: center; margin-top: 15px; font-weight: bold; color: #666; }
+        
+        /* Feedback Box */
+        #feedback-box { margin-top: 20px; padding: 20px; border-radius: 10px; background: #eef7ff; display: none; text-align: left; border-left: 5px solid var(--primary); }
+        #feedback-box h4 { margin-top: 0; color: var(--primary); }
     </style>
 </head>
 <body>
@@ -48,7 +52,7 @@
                 <p id="listeningQuestionText" style="font-weight: bold; font-size: 1.1rem;"></p>
                 <div id="listeningOptions"></div>
             </div>
-            <button class="btn btn-submit" onclick="submitListeningTask()">Submit Answer</button>
+            <button class="btn btn-submit" id="submitListeningBtn" onclick="submitListeningTask()">Submit Answer</button>
         </div>
 
         <div id="speakingUI" style="display: none;"><p>Speaking UI temporarily disabled for upgrades.</p></div>
@@ -56,6 +60,11 @@
         <div id="comprehensionUI" style="display: none;"><p>Comprehension UI temporarily disabled for upgrades.</p></div>
 
         <div id="status"></div>
+        
+        <div id="feedback-box">
+            <h4>🧠 AI Evaluation (<span id="scoreDisplay">-</span>/5)</h4>
+            <p id="replyDisplay"></p>
+        </div>
     </div>
 </div>
 
@@ -81,7 +90,7 @@
                 return;
             }
 
-            // 1. Format the Lesson Core (Title through Vocab)
+            // 1. Format the Lesson Core
             formatAndDisplayLesson(data.fullLesson);
 
             // 2. Route UI
@@ -107,8 +116,14 @@
     }
 
     function formatAndDisplayLesson(rawText) {
-        // Chop off everything below the Listening Task
-        let coreLesson = rawText.split("🎧 LISTENING TASK")[0].trim();
+        // Find the start of the Listening Task and clip everything after it
+        let coreLesson = rawText;
+        if (rawText.includes("LISTENING TASK")) {
+            coreLesson = rawText.split(/LISTENING TASK/i)[0].trim();
+        } else if (rawText.match(/(🎧|🗣️|❓|📝)/)) {
+            coreLesson = rawText.split(/(🎧|🗣️|❓|📝)/)[0].trim(); // Fallback
+        }
+        
         cleanLessonTextForTTS = coreLesson.replace(/[\*#]/g, ''); // Save clean version for text-to-speech
 
         // Convert Markdown to beautiful HTML
@@ -125,23 +140,44 @@
     }
 
     function parseListening(text) {
+        // Safely extract just the Listening Task section
+        let listeningArea = text;
+        if (text.includes("LISTENING TASK")) {
+            listeningArea = text.split(/LISTENING TASK/i)[1];
+        }
+        // Quarantine the text by clipping at the next logical task, regardless of emojis
+        if (listeningArea.includes("SPEAKING TASK")) {
+            listeningArea = listeningArea.split(/SPEAKING TASK/i)[0];
+        } else if (listeningArea.includes("COMPREHENSION TASK")) {
+            listeningArea = listeningArea.split(/COMPREHENSION TASK/i)[0];
+        }
+
         // Extract script and question securely
-        const scriptMatch = text.match(/<AUDIO_SCRIPT>([\s\S]*?)<\/AUDIO_SCRIPT>/);
-        const questionMatch = text.match(/<QUESTION>([\s\S]*?)<\/QUESTION>/);
+        const scriptMatch = listeningArea.match(/<AUDIO_SCRIPT>([\s\S]*?)<\/AUDIO_SCRIPT>/i);
+        const questionMatch = listeningArea.match(/<QUESTION>([\s\S]*?)<\/QUESTION>/i);
         
         audioScriptText = scriptMatch ? scriptMatch[1].trim() : "Audio script not found.";
         listeningQuestionText = questionMatch ? questionMatch[1].trim() : "Question not found.";
         
         document.getElementById('listeningQuestionText').innerText = listeningQuestionText;
 
-        // Extract multiple choice options
-        const optionsArea = text.split("</QUESTION>")[1]?.split("🗣️ SPEAKING TASK")[0] || "";
-        const options = optionsArea.match(/[A-D]\) .+/g) || [];
+        // Look for options ONLY within our safely quarantined listeningArea
+        let afterQuestion = listeningArea;
+        if (listeningArea.includes("</QUESTION>")) {
+            afterQuestion = listeningArea.split(/<\/QUESTION>/i)[1];
+        }
+        
+        const options = afterQuestion.match(/[A-E][\)\.]\s+.+/gi) || [];
         
         let optionsHTML = "";
-        options.forEach(opt => {
-            optionsHTML += `<label class="q-option"><input type="radio" name="listenOpt" value="${opt}"> ${opt}</label>`;
-        });
+        if (options.length === 0) {
+            optionsHTML = `<p style="color:red; font-style:italic;">Oops! Could not parse options. Please check the raw text in your sheet.</p>`;
+        } else {
+            options.forEach(opt => {
+                let cleanOpt = opt.trim();
+                optionsHTML += `<label class="q-option"><input type="radio" name="listenOpt" value="${cleanOpt}"> ${cleanOpt}</label>`;
+            });
+        }
         document.getElementById('listeningOptions').innerHTML = optionsHTML;
     }
 
@@ -155,7 +191,6 @@
     function readLessonAloud() { speakText(cleanLessonTextForTTS); }
     function playAudioTask() { speakText(audioScriptText); }
     function playListeningQuestion() { 
-        // Read question + options
         let optionsText = Array.from(document.querySelectorAll('.q-option')).map(el => el.innerText).join(". ");
         speakText(listeningQuestionText + ". Here are your options: " + optionsText); 
     }
@@ -164,12 +199,35 @@
         const selected = document.querySelector('input[name="listenOpt"]:checked');
         if(!selected) return alert("Please select an answer.");
         
-        document.getElementById('status').innerText = "Submitting answer to Google Sheets...";
+        // Disable button while processing
+        const submitBtn = document.getElementById('submitListeningBtn');
+        submitBtn.disabled = true;
+        document.getElementById('status').innerText = "AI is grading your answer...";
+        document.getElementById('feedback-box').style.display = 'none'; // Hide previous feedback if any
         
-        const payload = { studentId, lessonId, prompt: listeningQuestionText, studentAnswers: selected.value, taskType: "Comprehension", type: "assessment" };
-        await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+        const payload = { 
+            studentId, 
+            lessonId, 
+            prompt: listeningQuestionText, 
+            text: selected.value, // We pass the answer as 'text' to the backend
+            taskType: "Comprehension", 
+            type: "assessment" 
+        };
         
-        document.getElementById('status').innerText = "✅ Submitted successfully! You may close this window.";
+        try {
+            const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+            const result = await response.json();
+            
+            // Show Feedback
+            document.getElementById('feedback-box').style.display = 'block';
+            document.getElementById('scoreDisplay').innerText = result.score || "N/A";
+            document.getElementById('replyDisplay').innerText = result.reply || "Submission recorded.";
+            document.getElementById('status').innerText = "✅ Evaluation Complete!";
+        } catch (e) {
+            document.getElementById('status').innerText = "Error grading submission.";
+        } finally {
+            submitBtn.disabled = false;
+        }
     }
 
     window.onload = loadData;
