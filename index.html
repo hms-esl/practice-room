@@ -41,15 +41,10 @@
 
 <div class="container">
     
-    <div id="topAudioControls" style="display: none; width: 100%; margin-bottom: 20px; flex-direction: column; gap: 10px;">
-        <button class="btn btn-listen" onclick="playAudioTask()">🔊 Play Audio Story</button>
-        <button class="btn btn-listen" onclick="readAllQuestions()">🔊 Read Questions & Options</button>
-    </div>
-
     <div class="card lesson-card">
+        <button id="readLessonBtn" class="btn btn-listen" onclick="speakText(document.getElementById('lessonContent').innerText)" style="display:none; margin-bottom: 15px;">🔊 Read Lesson Aloud</button>
         <h2 id="lessonTitle">📚 Today's Lesson</h2>
         <div id="lessonContent" class="lesson-text">Loading...</div>
-        <button id="readLessonBtn" class="btn btn-listen" onclick="speakText(document.getElementById('lessonContent').innerText)" style="display:none; margin-top: 15px;">🔊 Read Lesson Aloud</button>
     </div>
 
     <div class="card">
@@ -62,7 +57,9 @@
         </div>
 
         <div id="listeningUI" style="display: none;">
-            <div id="listeningQuizContainer"></div>
+            <button class="btn btn-listen" onclick="playAudioTask()">🔊 Play Audio Story</button>
+            <button class="btn btn-listen" onclick="readAllQuestions()">🔊 Read Questions & Options</button>
+            <div id="listeningQuizContainer" style="margin-top: 15px;"></div>
             <button id="submitListenBtn" class="btn btn-record" onclick="submitAutoQuiz()" style="display:none;">Submit Answers</button>
         </div>
 
@@ -91,7 +88,6 @@
     const lessonId = urlParams.get('lessonId');
     const studentId = urlParams.get('studentId');
     
-    // Safety trim for TaskType
     const rawTaskType = urlParams.get('taskType') || 'speaking';
     const taskType = rawTaskType.trim().toLowerCase();
 
@@ -129,7 +125,6 @@
                 buildUniversalQuiz(isolatedComp, 'quizContainer', 'submitQuizBtn');
                 
             } else if (taskType === 'listening') {
-                document.getElementById('topAudioControls').style.display = "flex"; // Show buttons at top
                 showUI('listeningUI', '🎧 Listening Task');
                 parseListening(data.fullLesson);
                 
@@ -166,15 +161,15 @@
 
     function parseListening(text) {
         audioScript = text.match(/<AUDIO_SCRIPT>([\s\S]*?)<\/AUDIO_SCRIPT>/i)?.[1] || "";
-        const quizAreaMatch = text.match(/LISTENING TASK([\s\S]*?)(?:🗣️\s*SPEAKING TASK|SPEAKING TASK|$)/i);
+        // FIXED: Regex now accounts for all tasks so Listening never accidentally grabs Comprehension
+        const quizAreaMatch = text.match(/LISTENING TASK([\s\S]*?)(?:🗣️\s*SPEAKING TASK|SPEAKING TASK|❓\s*COMPREHENSION TASK|COMPREHENSION TASK|📝\s*WRITING TASK|WRITING TASK|$)/i);
         let quizArea = quizAreaMatch ? quizAreaMatch[1] : "";
-        // Remove the audio script block so it doesn't mess with question parsing
         quizArea = quizArea.replace(/<AUDIO_SCRIPT>[\s\S]*?<\/AUDIO_SCRIPT>/i, "");
         buildUniversalQuiz(quizArea, 'listeningQuizContainer', 'submitListenBtn');
     }
 
     function speakText(val) {
-        window.speechSynthesis.cancel(); // Prevents audio overlapping
+        window.speechSynthesis.cancel(); 
         const msg = new SpeechSynthesisUtterance(val);
         window.speechSynthesis.speak(msg);
     }
@@ -200,13 +195,9 @@
         container.innerHTML = "";
         quizQuestions = [];
 
-        // 1. Clean up <QUESTION> tags
         let cleanText = rawText.replace(/<\/?QUESTION>/gi, "\n");
-
-        // 2. Split into blocks by question numbers (1., 2., 3.)
         let blocks = cleanText.split(/\n\s*\d+\.\s+/).filter(b => b.trim().length > 10);
         
-        // Fallback
         if (blocks.length === 0) {
             blocks = cleanText.split(/(?:^|\s)\d+\.\s+/).filter(b => b.trim().length > 10);
         }
@@ -221,12 +212,10 @@
             const questionText = qSplit[0].trim();
             const restOfBlock = qSplit.slice(1).join(" ");
 
-            // Separate Options from "Answers: / Feedback:" so feedback NEVER becomes an option
             const feedbackSplit = restOfBlock.split(/Answers?:/i);
             const optionsSection = feedbackSplit[0];
             const answerAndFeedback = feedbackSplit[1] ? "Answers: " + feedbackSplit[1] : "";
 
-            // Extract Options A, B, C (Case sensitive to prevent truncating text like 'game.')
             const options = [];
             const optionRegex = /([A-E][\)\.])\s*([\s\S]+?)(?=(?:\n?\s*[A-E][\)\.])|$)/g;
             let match;
@@ -234,7 +223,6 @@
                 options.push({ letter: match[1].charAt(0).toUpperCase(), text: match[2].trim() });
             }
 
-            // Foolproof extraction of Answer and Feedback using individual checks
             let correctAnswer = null;
             let feedbackText = "Feedback was not provided.";
             
@@ -280,7 +268,7 @@
     }
 
     // ==========================================
-    // UNIFIED SUBMISSION: HINTS & TWO-ATTEMPT LOGIC
+    // BATCHED SUBMISSION: HINTS & TWO-ATTEMPT LOGIC
     // ==========================================
     async function submitAutoQuiz() {
         document.getElementById('status').innerText = "Grading...";
@@ -300,7 +288,7 @@
         let studentAnswersRecord = `Attempt ${attemptCount}: `;
         let allCorrect = true;
         
-        // Count correct answers
+        // Check answers locally
         for (let i = 0; i < quizQuestions.length; i++) {
             const q = quizQuestions[i];
             studentAnswersRecord += `Q${i+1}: ${q.selectedLetter}. `;
@@ -316,6 +304,39 @@
             attemptsData.attempt1 = studentAnswersRecord + `(Score: ${currentScore}/${quizQuestions.length})`;
             document.getElementById('status').innerText = "Generating AI hints for your missed questions... ⏳";
             
+            // FIXED: Bundle ALL wrong questions into ONE API request to stop Quota Crashes
+            let wrongQuestionsSummary = "";
+            for (let i = 0; i < quizQuestions.length; i++) {
+                const q = quizQuestions[i];
+                if (!(q.correctLetter && q.selectedLetter === q.correctLetter)) {
+                    const wrongOpt = q.options.find(o => o.letter === q.selectedLetter);
+                    const wrongText = wrongOpt ? wrongOpt.text : "No selection";
+                    wrongQuestionsSummary += `Question ${i+1}: ${q.question} | Student incorrectly guessed: ${wrongText}\n`;
+                }
+            }
+
+            let hintText = "Revisit the material and try again!";
+            try {
+                const hintResponse = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    body: JSON.stringify({
+                        studentId: studentId,
+                        lessonId: lessonId,
+                        taskType: "hint", 
+                        prompt: "I missed the following questions. Please give me a brief, 1-sentence hint for EACH question to guide my thinking without giving away the answer.",
+                        text: wrongQuestionsSummary, 
+                        type: "assessment"
+                    })
+                });
+                const hintResult = await hintResponse.json();
+                if(hintResult.reply && !hintResult.reply.includes("API Error")) {
+                    hintText = hintResult.reply;
+                } else if (hintResult.reply && hintResult.reply.includes("Quota exceeded")) {
+                    hintText = "The AI tutor is a little busy right now! Please re-read the passage and try again.";
+                }
+            } catch(e) { console.error(e); }
+            
+            // Show Feedback Under Questions
             for (let i = 0; i < quizQuestions.length; i++) {
                 const q = quizQuestions[i];
                 const fbBox = document.getElementById(`qFeedback_${i}`);
@@ -324,33 +345,20 @@
                 if (q.correctLetter && q.selectedLetter === q.correctLetter) {
                     fbBox.style.borderLeftColor = "var(--success)";
                     fbBox.style.backgroundColor = "#e8f5e9";
-                    fbBox.innerHTML = `<strong>✅ Correct!</strong> ${q.feedback}`;
+                    fbBox.innerHTML = `<strong>✅ Correct!</strong>`;
                 } else {
                     fbBox.style.borderLeftColor = "var(--writing)";
                     fbBox.style.backgroundColor = "#fff3cd";
-                    fbBox.innerHTML = `<strong>❌ Incorrect.</strong> <em>Generating hint... ⏳</em>`;
-                    
-                    // Call the new "Hint" backend to generate a specific pedagogical clue
-                    try {
-                        const wrongOptionText = q.options.find(o => o.letter === q.selectedLetter).text;
-                        const hintResponse = await fetch(SCRIPT_URL, {
-                            method: "POST",
-                            body: JSON.stringify({
-                                studentId: studentId,
-                                lessonId: lessonId,
-                                taskType: "hint", 
-                                prompt: q.question,
-                                text: wrongOptionText, 
-                                type: "assessment"
-                            })
-                        });
-                        const hintResult = await hintResponse.json();
-                        fbBox.innerHTML = `<strong>💡 AI Hint:</strong> ${hintResult.reply}`;
-                    } catch(e) {
-                        fbBox.innerHTML = `<strong>❌ Not quite.</strong> Revisit the material and try again!`;
-                    }
+                    fbBox.innerHTML = `<strong>❌ Incorrect.</strong> Check the hint below!`;
                 }
             }
+            
+            // Show the bundled AI Hints in the main feedback box at the bottom
+            document.getElementById('feedback-box').style.display = "block";
+            document.getElementById('feedback-box').style.borderLeftColor = "var(--writing)";
+            document.getElementById('feedback-box').style.backgroundColor = "#fff3cd";
+            document.getElementById('scoreDisplay').innerText = `Attempt 1: ${currentScore}/${quizQuestions.length}`;
+            document.getElementById('replyDisplay').innerHTML = `<strong>💡 AI Hints:</strong><br><br>${hintText.replace(/\n/g, '<br>')}`;
             
             attemptCount = 2;
             document.getElementById('status').innerText = "Review your hints, correct your mistakes, and submit Attempt 2.";
@@ -385,7 +393,11 @@
         
         const finalScoreText = `${currentScore}/${quizQuestions.length}`;
         document.getElementById('status').innerText = `Done! Final Score: ${finalScoreText}`;
-        showFeedback({score: finalScoreText, reply: "Scores have been recorded."});
+        
+        // Reset Feedback Box styling and show final score
+        document.getElementById('feedback-box').style.borderLeftColor = "var(--primary)";
+        document.getElementById('feedback-box').style.backgroundColor = "#eef7ff";
+        showFeedback({score: finalScoreText, reply: "Scores have been recorded. Check individual questions for correct answers and feedback!"});
 
         // Fast-Lane: Send combined attempts to the spreadsheet instantly
         let combinedTextForSheet = attemptsData.attempt1;
@@ -427,7 +439,7 @@
     function showFeedback(result) {
         document.getElementById('feedback-box').style.display = "block";
         document.getElementById('scoreDisplay').innerText = result.score;
-        document.getElementById('replyDisplay').innerText = result.reply;
+        document.getElementById('replyDisplay').innerHTML = result.reply;
         document.getElementById('status').innerText = "Task Complete!";
     }
 
