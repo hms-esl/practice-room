@@ -46,8 +46,7 @@
             <button class="btn btn-listen" id="playAudioBtn" style="display: none;" onclick="playAudioTask()">🔊 1. Play Audio Story</button>
             <button class="btn btn-listen" style="background: #8e44ad;" onclick="playAllQuestions()">❓ Read Questions & Options</button>
             
-            <div id="mc-container">
-                </div>
+            <div id="mc-container"></div>
             
             <button class="btn btn-submit" id="submitReceptiveBtn" onclick="submitReceptiveTask()">Submit Answers</button>
         </div>
@@ -69,11 +68,14 @@
     const urlParams = new URLSearchParams(window.location.search);
     const lessonId = urlParams.get('lessonId');
     const studentId = urlParams.get('studentId');
-    const taskType = urlParams.get('taskType'); // 'listening', 'comprehension', etc.
+    
+    // SAFE TASK TYPE: Forces lowercase and removes accidental spaces
+    const rawTaskType = urlParams.get('taskType') || '';
+    const taskType = rawTaskType.trim().toLowerCase(); 
 
     let cleanLessonTextForTTS = "";
     let audioScriptText = "";
-    let questionsData = []; // Will hold an array of { prompt: "...", options: ["A...", "B..."] }
+    let questionsData = []; 
 
     async function loadData() {
         document.getElementById('status').innerText = "Fetching data from Google Sheets...";
@@ -83,17 +85,20 @@
             
             if (data.error) {
                 document.getElementById('lessonContent').innerText = "Error: " + data.error;
+                document.getElementById('taskTitle').innerText = "Load Failed";
                 return;
             }
 
-            formatAndDisplayLesson(data.fullLesson);
+            // Ensure we have a string to work with
+            const safeFullLesson = String(data.fullLesson || '');
+
+            formatAndDisplayLesson(safeFullLesson);
             document.getElementById('status').innerText = "";
 
-            // Route to Unified Receptive UI if Listening or Comprehension
             if (taskType === 'listening' || taskType === 'comprehension') {
                 document.getElementById('receptiveUI').style.display = "block";
                 document.getElementById('taskTitle').innerText = taskType === 'listening' ? '🎧 Listening Task' : '🧠 Comprehension Task';
-                parseReceptiveTask(data.fullLesson, taskType);
+                parseReceptiveTask(safeFullLesson, taskType);
             } else if (taskType === 'writing') {
                 document.getElementById('writingUI').style.display = "block";
                 document.getElementById('taskTitle').innerText = '✍️ Writing Task';
@@ -102,12 +107,17 @@
                 document.getElementById('taskTitle').innerText = '🗣️ Speaking Task';
             }
         } catch (e) { 
-            document.getElementById('status').innerText = "Error loading data. Check console."; 
+            // If it crashes, it will print the EXACT error on the screen
+            document.getElementById('status').innerText = "System Error: " + e.message; 
+            document.getElementById('taskTitle').innerText = "Task Failed to Load";
+            console.error(e);
         }
     }
 
     function formatAndDisplayLesson(rawText) {
+        if (!rawText) return;
         let coreLesson = rawText;
+        
         if (rawText.match(/LISTENING TASK/i)) {
             coreLesson = rawText.split(/LISTENING TASK/i)[0].trim();
         } else if (rawText.match(/(🎧|🗣️|❓|📝)/)) {
@@ -125,4 +135,140 @@
         document.getElementById('lessonContent').innerHTML = coreLesson;
     }
 
-    function parseReceptiveTask(text
+    function parseReceptiveTask(text, type) {
+        if (!text) return;
+        let taskArea = text;
+        
+        try {
+            if (type === 'listening' && text.match(/LISTENING TASK/i)) {
+                let parts = text.split(/LISTENING TASK/i);
+                if (parts.length > 1) {
+                    taskArea = parts[1];
+                    taskArea = taskArea.split(/(COMPREHENSION TASK|SPEAKING TASK|WRITING TASK|🧠|🗣️|📝)/i)[0];
+                }
+            } else if (type === 'comprehension' && text.match(/COMPREHENSION TASK/i)) {
+                let parts = text.split(/COMPREHENSION TASK/i);
+                if (parts.length > 1) {
+                    taskArea = parts[1];
+                    taskArea = taskArea.split(/(SPEAKING TASK|WRITING TASK|LISTENING TASK|🗣️|📝|🎧)/i)[0];
+                }
+            }
+
+            const scriptMatch = taskArea.match(/<AUDIO_SCRIPT>([\s\S]*?)<\/AUDIO_SCRIPT>/i);
+            if (scriptMatch && scriptMatch[1]) {
+                audioScriptText = scriptMatch[1].trim();
+                document.getElementById('playAudioBtn').style.display = "block";
+            } else {
+                document.getElementById('playAudioBtn').style.display = "none";
+            }
+
+            questionsData = [];
+            const blocks = taskArea.split(/<QUESTION>/i);
+            if (blocks.length > 1) {
+                blocks.slice(1).forEach(block => {
+                    const splitBlock = block.split(/<\/QUESTION>/i);
+                    if (splitBlock.length >= 2) {
+                        const qText = splitBlock[0].trim();
+                        const afterQ = splitBlock[1] || '';
+                        
+                        const options = afterQ.match(/[A-E][\)\.]\s+[^\n]+/gi) || [];
+                        if (qText && options.length > 0) {
+                            questionsData.push({ prompt: qText, options: options.map(o => o.trim()) });
+                        }
+                    }
+                });
+            }
+
+            let optionsHTML = "";
+            if (questionsData.length === 0) {
+                optionsHTML = `<p style="color:red; font-style:italic;">Oops! Could not parse questions. The AI may have missed the &lt;QUESTION&gt; tags.</p>`;
+                document.getElementById('maxScoreDisplay').innerText = "1";
+            } else {
+                questionsData.forEach((q, index) => {
+                    optionsHTML += `<div class="q-block">`;
+                    optionsHTML += `<p style="font-weight: bold; font-size: 1.1rem;">${index + 1}. ${q.prompt}</p>`;
+                    q.options.forEach(opt => {
+                        // Stripping HTML tags from the value to keep it clean for backend
+                        let cleanValue = opt.replace(/<[^>]*>?/gm, ''); 
+                        optionsHTML += `<label class="q-option"><input type="radio" name="q${index}" value="${cleanValue}"> ${opt}</label>`;
+                    });
+                    optionsHTML += `</div>`;
+                });
+                document.getElementById('maxScoreDisplay').innerText = questionsData.length; 
+            }
+            document.getElementById('mc-container').innerHTML = optionsHTML;
+
+        } catch (err) {
+            document.getElementById('mc-container').innerHTML = `<p style="color:red;">Error parsing task data: ${err.message}</p>`;
+        }
+    }
+
+    function speakText(val) {
+        if (!val) return;
+        window.speechSynthesis.cancel();
+        const msg = new SpeechSynthesisUtterance(val);
+        window.speechSynthesis.speak(msg);
+    }
+    
+    function readLessonAloud() { speakText(cleanLessonTextForTTS); }
+    function playAudioTask() { speakText(audioScriptText); }
+    function playAllQuestions() { 
+        if (questionsData.length === 0) return speakText("No questions found.");
+        let fullSpeech = "";
+        questionsData.forEach((q, i) => {
+            fullSpeech += `Question ${i + 1}: ${q.prompt}. Options are: ${q.options.join(". ")}. `;
+        });
+        speakText(fullSpeech); 
+    }
+
+    async function submitReceptiveTask() {
+        if (questionsData.length === 0) return alert("No questions available to submit.");
+        
+        let studentAnswers = [];
+        let combinedPrompts = "";
+        let combinedAnswers = "";
+
+        for (let i = 0; i < questionsData.length; i++) {
+            const selected = document.querySelector(`input[name="q${i}"]:checked`);
+            if (!selected) {
+                alert(`Please select an answer for Question ${i + 1}.`);
+                return;
+            }
+            studentAnswers.push(selected.value);
+            combinedPrompts += `Q${i+1}: ${questionsData[i].prompt}\n`;
+            combinedAnswers += `A${i+1}: ${selected.value}\n`;
+        }
+        
+        const submitBtn = document.getElementById('submitReceptiveBtn');
+        submitBtn.disabled = true;
+        document.getElementById('status').innerText = "AI is grading your answers...";
+        document.getElementById('feedback-box').style.display = 'none'; 
+        
+        const payload = { 
+            studentId, 
+            lessonId, 
+            prompt: combinedPrompts.trim(), 
+            text: combinedAnswers.trim(), 
+            taskType: taskType, 
+            type: "assessment" 
+        };
+        
+        try {
+            const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+            const result = await response.json();
+            
+            document.getElementById('feedback-box').style.display = 'block';
+            document.getElementById('scoreDisplay').innerText = result.score !== undefined ? result.score : "N/A";
+            document.getElementById('replyDisplay').innerText = result.reply || "Submission recorded.";
+            document.getElementById('status').innerText = "✅ Evaluation Complete!";
+        } catch (e) {
+            document.getElementById('status').innerText = "Error grading submission.";
+        } finally {
+            submitBtn.disabled = false;
+        }
+    }
+
+    window.onload = loadData;
+</script>
+</body>
+</html>
