@@ -6,58 +6,74 @@
     <title>ELL Interactive Lesson</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
     <style>
-        :root { --primary: #4A90E2; --secondary: #50E3C2; --bg: #F4F7F9; --error: #FF4B2B; --success: #28a745; --listening: #9b59b6; }
+        :root { --primary: #4A90E2; --secondary: #50E3C2; --bg: #F4F7F9; --error: #FF4B2B; --success: #28a745; --writing: #f39c12; --listening: #9b59b6; }
         body { font-family: 'Poppins', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; min-height: 100vh; }
-        .container { width: 100%; max-width: 700px; }
+        .container { width: 100%; max-width: 600px; }
         
-        .card { background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: left; }
-        
-        .lesson-header { color: var(--primary); font-size: 1.5rem; margin-bottom: 5px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-        .lesson-section { color: #333; margin-top: 20px; margin-bottom: 5px; font-size: 1.2rem; }
-        .lesson-text { font-size: 1rem; line-height: 1.6; color: #444; }
+        .card { background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; }
+        .lesson-card { text-align: left; }
+        .lesson-text { white-space: pre-wrap; font-size: 0.95rem; line-height: 1.6; color: #333; }
         
         .btn { border: none; padding: 12px 24px; border-radius: 50px; cursor: pointer; font-weight: 600; transition: 0.3s; margin: 10px 0; width: 100%; }
         .btn-listen { background: var(--listening); color: white; }
-        .btn-submit { background: var(--success); color: white; }
+        .btn-record { background: var(--primary); color: white; }
+        .btn-writing { background: var(--writing); color: white; }
         
-        .q-block { background: #fdfdfd; border: 1px solid #eee; border-radius: 10px; padding: 15px; margin-top: 15px; margin-bottom: 15px;}
-        .q-option { display: block; margin-bottom: 8px; cursor: pointer; padding: 12px; border-radius: 8px; background: #f9f9f9; border: 1px solid #ddd; transition: 0.2s; }
-        .q-option:hover { background: #f0f8ff; border-color: var(--primary); }
-        input[type="radio"] { margin-right: 10px; transform: scale(1.2); }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        .recording { background: var(--error) !important; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
         
-        #status { text-align: center; margin-top: 15px; font-weight: bold; color: #666; }
+        #status { margin-top: 15px; font-size: 0.9rem; color: #666; min-height: 40px; font-weight: bold;}
+        #feedback-box { margin-top: 20px; padding: 15px; border-radius: 10px; background: #eef7ff; display: none; text-align: left; }
         
-        #feedback-box { margin-top: 20px; padding: 20px; border-radius: 10px; background: #eef7ff; display: none; text-align: left; border-left: 5px solid var(--primary); }
-        #feedback-box h4 { margin-top: 0; color: var(--primary); }
+        /* Quiz & UI Components */
+        .q-block { background: #fdfdfd; border: 1px solid #eee; border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: left; }
+        .q-text { font-weight: 600; margin-bottom: 10px; }
+        .q-option { display: block; margin-bottom: 8px; cursor: pointer; padding: 8px; border-radius: 8px; transition: 0.2s; border: 1px solid transparent;}
+        .q-option:hover { background: #f0f8ff; border: 1px solid var(--primary); }
+        .ai-feedback { margin-top: 10px; padding: 12px; border-radius: 4px; font-size: 0.9rem; display: none; }
+        
+        /* Writing Styles */
+        textarea { width: 100%; height: 150px; border-radius: 10px; border: 1px solid #ddd; padding: 10px; font-family: inherit; resize: vertical; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="card">
-        <button class="btn btn-listen" id="readLessonBtn" onclick="readLessonAloud()">🔊 Read Lesson Aloud</button>
-        <div id="lessonContent" class="lesson-text">Loading lesson details...</div>
+    <div class="card lesson-card">
+        <h2 id="lessonTitle">📚 Today's Lesson</h2>
+        <div id="lessonContent" class="lesson-text">Loading...</div>
     </div>
 
     <div class="card">
-        <h2 id="taskTitle" style="text-align: center;">Task Loading...</h2>
+        <h2 id="taskTitle">Task Loading...</h2>
         
-        <div id="receptiveUI" style="display: none;">
-            <button class="btn btn-listen" id="playAudioBtn" style="display: none;" onclick="playAudioTask()">🔊 1. Play Audio Story</button>
-            <button class="btn btn-listen" style="background: #8e44ad;" onclick="playAllQuestions()">❓ Read Questions & Options</button>
-            
-            <div id="mc-container"></div>
-            
-            <button class="btn btn-submit" id="submitReceptiveBtn" onclick="submitReceptiveTask()">Submit Answers</button>
+        <div id="speakingUI" style="display: none;">
+            <p id="promptText" style="font-style: italic; color: #555;">Fetching prompt...</p>
+            <button class="btn btn-listen" onclick="speakText(currentPrompt)">🔊 Listen to Prompt</button>
+            <button id="recordBtn" class="btn btn-record" onclick="toggleRecording()">🎤 Start Recording</button>
         </div>
 
-        <div id="speakingUI" style="display: none;"><p>Speaking UI temporarily disabled.</p></div>
-        <div id="writingUI" style="display: none;"><p>Writing UI temporarily disabled.</p></div>
+        <div id="listeningUI" style="display: none;">
+            <button class="btn btn-listen" onclick="playAudioTask()">🔊 Play Audio Story</button>
+            <div id="listeningQuizContainer"></div>
+            <button id="submitListenBtn" class="btn btn-record" onclick="submitAutoQuiz()" style="display:none;">Submit Answers</button>
+        </div>
 
-        <div id="status"></div>
-        
+        <div id="writingUI" style="display: none;">
+            <p id="writingPrompt" style="font-style: italic; color: #555;"></p>
+            <textarea id="writingInput" placeholder="Type your answer here..."></textarea>
+            <button id="submitWritingBtn" class="btn btn-writing" onclick="submitTextTask('writing')">Submit Writing</button>
+        </div>
+
+        <div id="comprehensionUI" style="display: none;">
+            <div id="quizContainer"></div>
+            <button id="submitQuizBtn" class="btn btn-record" onclick="submitAutoQuiz()" style="display:none;">Submit Quiz</button>
+        </div>
+
+        <div id="status">Ready!</div>
         <div id="feedback-box">
-            <h4>🧠 AI Evaluation (<span id="scoreDisplay">-</span>/<span id="maxScoreDisplay">1</span>)</h4>
+            <strong>AI Feedback: <span id="scoreDisplay">-</span></strong>
             <p id="replyDisplay"></p>
         </div>
     </div>
@@ -68,204 +84,275 @@
     const urlParams = new URLSearchParams(window.location.search);
     const lessonId = urlParams.get('lessonId');
     const studentId = urlParams.get('studentId');
-    
-    // SAFE TASK TYPE: Forces lowercase and removes accidental spaces
-    const rawTaskType = urlParams.get('taskType') || '';
-    const taskType = rawTaskType.trim().toLowerCase(); 
+    const taskType = urlParams.get('taskType') || 'speaking';
 
-    let cleanLessonTextForTTS = "";
-    let audioScriptText = "";
-    let questionsData = []; 
+    let currentPrompt = "";
+    let audioScript = "";
+    let isRecording = false;
+    let recognition;
+    let quizQuestions = [];
 
     async function loadData() {
-        document.getElementById('status').innerText = "Fetching data from Google Sheets...";
         try {
             const response = await fetch(`${SCRIPT_URL}?lessonId=${lessonId}`);
             const data = await response.json();
             
-            if (data.error) {
-                document.getElementById('lessonContent').innerText = "Error: " + data.error;
-                document.getElementById('taskTitle').innerText = "Load Failed";
-                return;
-            }
+            // Clip reading text to hide the task headers from the main text view
+            const readingMatch = data.fullLesson.split(/🎧\s*LISTENING TASK|LISTENING TASK/i);
+            const readingMaterialOnly = readingMatch[0].trim();
+            document.getElementById('lessonContent').innerText = readingMaterialOnly;
 
-            // Ensure we have a string to work with
-            const safeFullLesson = String(data.fullLesson || '');
-
-            formatAndDisplayLesson(safeFullLesson);
-            document.getElementById('status').innerText = "";
-
-            if (taskType === 'listening' || taskType === 'comprehension') {
-                document.getElementById('receptiveUI').style.display = "block";
-                document.getElementById('taskTitle').innerText = taskType === 'listening' ? '🎧 Listening Task' : '🧠 Comprehension Task';
-                parseReceptiveTask(safeFullLesson, taskType);
+            // Route UI
+            if (taskType === 'comprehension') {
+                showUI('comprehensionUI', '🧠 Comprehension Task');
+                const compRegex = /COMPREHENSION TASK([\s\S]*?)(?:📝\s*WRITING TASK|WRITING TASK|$)/i;
+                const match = data.fullLesson.match(compRegex);
+                const isolatedComp = match ? match[1] : "";
+                buildUniversalQuiz(isolatedComp, 'quizContainer', 'submitQuizBtn');
+                
+            } else if (taskType === 'listening') {
+                showUI('listeningUI', '🎧 Listening Task');
+                parseListening(data.fullLesson);
+                
             } else if (taskType === 'writing') {
-                document.getElementById('writingUI').style.display = "block";
-                document.getElementById('taskTitle').innerText = '✍️ Writing Task';
+                showUI('writingUI', '✍️ Writing Task');
+                parseWriting(data.fullLesson);
+                
             } else {
-                document.getElementById('speakingUI').style.display = "block";
-                document.getElementById('taskTitle').innerText = '🗣️ Speaking Task';
+                showUI('speakingUI', '🗣️ Speaking Task');
+                parseSpeaking(data.fullLesson);
             }
         } catch (e) { 
-            // If it crashes, it will print the EXACT error on the screen
-            document.getElementById('status').innerText = "System Error: " + e.message; 
-            document.getElementById('taskTitle').innerText = "Task Failed to Load";
             console.error(e);
+            document.getElementById('status').innerText = "Error loading data."; 
         }
     }
 
-    function formatAndDisplayLesson(rawText) {
-        if (!rawText) return;
-        let coreLesson = rawText;
-        
-        if (rawText.match(/LISTENING TASK/i)) {
-            coreLesson = rawText.split(/LISTENING TASK/i)[0].trim();
-        } else if (rawText.match(/(🎧|🗣️|❓|📝)/)) {
-            coreLesson = rawText.split(/(🎧|🗣️|❓|📝)/)[0].trim();
-        }
-        
-        cleanLessonTextForTTS = coreLesson.replace(/[\*#]/g, ''); 
-        coreLesson = coreLesson.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); 
-        coreLesson = coreLesson.replace(/(🎯 TITLE:.*)/g, '<h3 class="lesson-header">$1</h3>');
-        coreLesson = coreLesson.replace(/(📖 ANCHOR)/g, '<h4 class="lesson-section">$1</h4>');
-        coreLesson = coreLesson.replace(/(📝 SUMMARY)/g, '<h4 class="lesson-section">$1</h4>');
-        coreLesson = coreLesson.replace(/(🧠 ACADEMIC VOCABULARY)/g, '<h4 class="lesson-section">$1</h4>');
-        coreLesson = coreLesson.replace(/\n/g, '<br>');
-        
-        document.getElementById('lessonContent').innerHTML = coreLesson;
+    function showUI(id, title) {
+        document.getElementById(id).style.display = "block";
+        document.getElementById('taskTitle').innerText = title;
     }
 
-    function parseReceptiveTask(text, type) {
-        if (!text) return;
-        let taskArea = text;
-        
-        try {
-            if (type === 'listening' && text.match(/LISTENING TASK/i)) {
-                let parts = text.split(/LISTENING TASK/i);
-                if (parts.length > 1) {
-                    taskArea = parts[1];
-                    taskArea = taskArea.split(/(COMPREHENSION TASK|SPEAKING TASK|WRITING TASK|🧠|🗣️|📝)/i)[0];
-                }
-            } else if (type === 'comprehension' && text.match(/COMPREHENSION TASK/i)) {
-                let parts = text.split(/COMPREHENSION TASK/i);
-                if (parts.length > 1) {
-                    taskArea = parts[1];
-                    taskArea = taskArea.split(/(SPEAKING TASK|WRITING TASK|LISTENING TASK|🗣️|📝|🎧)/i)[0];
-                }
-            }
+    function parseSpeaking(text) {
+        const parts = text.split(/🗣️\s*SPEAKING TASK|SPEAKING TASK/i);
+        currentPrompt = parts[1] ? parts[1].split("❓")[0].trim() : "Explain what you learned today.";
+        document.getElementById('promptText').innerText = currentPrompt;
+    }
 
-            const scriptMatch = taskArea.match(/<AUDIO_SCRIPT>([\s\S]*?)<\/AUDIO_SCRIPT>/i);
-            if (scriptMatch && scriptMatch[1]) {
-                audioScriptText = scriptMatch[1].trim();
-                document.getElementById('playAudioBtn').style.display = "block";
-            } else {
-                document.getElementById('playAudioBtn').style.display = "none";
-            }
+    function parseWriting(text) {
+        const parts = text.split(/📝\s*WRITING TASK|WRITING TASK/i);
+        const prompt = parts[1] || "Write 3-5 sentences about the lesson.";
+        document.getElementById('writingPrompt').innerText = prompt.trim();
+    }
 
-            questionsData = [];
-            const blocks = taskArea.split(/<QUESTION>/i);
-            if (blocks.length > 1) {
-                blocks.slice(1).forEach(block => {
-                    const splitBlock = block.split(/<\/QUESTION>/i);
-                    if (splitBlock.length >= 2) {
-                        const qText = splitBlock[0].trim();
-                        const afterQ = splitBlock[1] || '';
-                        
-                        const options = afterQ.match(/[A-E][\)\.]\s+[^\n]+/gi) || [];
-                        if (qText && options.length > 0) {
-                            questionsData.push({ prompt: qText, options: options.map(o => o.trim()) });
-                        }
-                    }
-                });
-            }
-
-            let optionsHTML = "";
-            if (questionsData.length === 0) {
-                optionsHTML = `<p style="color:red; font-style:italic;">Oops! Could not parse questions. The AI may have missed the &lt;QUESTION&gt; tags.</p>`;
-                document.getElementById('maxScoreDisplay').innerText = "1";
-            } else {
-                questionsData.forEach((q, index) => {
-                    optionsHTML += `<div class="q-block">`;
-                    optionsHTML += `<p style="font-weight: bold; font-size: 1.1rem;">${index + 1}. ${q.prompt}</p>`;
-                    q.options.forEach(opt => {
-                        // Stripping HTML tags from the value to keep it clean for backend
-                        let cleanValue = opt.replace(/<[^>]*>?/gm, ''); 
-                        optionsHTML += `<label class="q-option"><input type="radio" name="q${index}" value="${cleanValue}"> ${opt}</label>`;
-                    });
-                    optionsHTML += `</div>`;
-                });
-                document.getElementById('maxScoreDisplay').innerText = questionsData.length; 
-            }
-            document.getElementById('mc-container').innerHTML = optionsHTML;
-
-        } catch (err) {
-            document.getElementById('mc-container').innerHTML = `<p style="color:red;">Error parsing task data: ${err.message}</p>`;
-        }
+    function parseListening(text) {
+        audioScript = text.match(/<AUDIO_SCRIPT>([\s\S]*?)<\/AUDIO_SCRIPT>/i)?.[1] || "";
+        const quizAreaMatch = text.match(/LISTENING TASK([\s\S]*?)(?:🗣️\s*SPEAKING TASK|SPEAKING TASK|$)/i);
+        let quizArea = quizAreaMatch ? quizAreaMatch[1] : "";
+        // Remove the audio script block so it doesn't mess with question parsing
+        quizArea = quizArea.replace(/<AUDIO_SCRIPT>[\s\S]*?<\/AUDIO_SCRIPT>/i, "");
+        buildUniversalQuiz(quizArea, 'listeningQuizContainer', 'submitListenBtn');
     }
 
     function speakText(val) {
-        if (!val) return;
-        window.speechSynthesis.cancel();
         const msg = new SpeechSynthesisUtterance(val);
         window.speechSynthesis.speak(msg);
     }
-    
-    function readLessonAloud() { speakText(cleanLessonTextForTTS); }
-    function playAudioTask() { speakText(audioScriptText); }
-    function playAllQuestions() { 
-        if (questionsData.length === 0) return speakText("No questions found.");
-        let fullSpeech = "";
-        questionsData.forEach((q, i) => {
-            fullSpeech += `Question ${i + 1}: ${q.prompt}. Options are: ${q.options.join(". ")}. `;
+
+    function playAudioTask() { speakText(audioScript); }
+
+    // ==========================================
+    // UNIFIED BUILDER: Auto-Extracts Questions & Keys
+    // ==========================================
+    function buildUniversalQuiz(rawText, containerId, btnId) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = "";
+        quizQuestions = [];
+
+        // 1. Clean up <QUESTION> tags in case AI used them
+        let cleanText = rawText.replace(/<\/?QUESTION>/gi, "\n");
+
+        // 2. Split into blocks by question numbers (1., 2., 3.)
+        let blocks = cleanText.split(/\n\s*\d+\.\s+/).filter(b => b.trim().length > 10);
+        
+        // Fallback: If split by newline fails, try splitting just by "1. "
+        if (blocks.length === 0) {
+            blocks = cleanText.split(/(?:^|\s)\d+\.\s+/).filter(b => b.trim().length > 10);
+        }
+
+        if (blocks.length === 0) {
+            container.innerHTML = "<p style='color:red;'>Oops! Could not parse the questions. Please check the AI lesson format.</p>";
+            return;
+        }
+
+        blocks.forEach((block, index) => {
+            // A) Separate Question Text from Options
+            // Look for the first A) or A. to split
+            const qSplit = block.split(/(?=\n?\s*A[\)\.])|(?=\s+A[\)\.])/i);
+            const questionText = qSplit[0].trim();
+            const restOfBlock = qSplit.slice(1).join(" ");
+
+            // B) Separate Options from "Answers: / Feedback:"
+            // This guarantees the feedback is NEVER parsed as an option.
+            const feedbackSplit = restOfBlock.split(/Answers?:/i);
+            const optionsSection = feedbackSplit[0];
+            const answerAndFeedback = feedbackSplit[1] ? "Answers: " + feedbackSplit[1] : "";
+
+            // C) Extract Options A, B, C
+            const options = [];
+            const optionRegex = /([A-E][\)\.])\s*([\s\S]+?)(?=(?:\n?\s*[A-E][\)\.])|$)/gi;
+            let match;
+            while ((match = optionRegex.exec(optionsSection)) !== null) {
+                options.push({ letter: match[1].charAt(0).toUpperCase(), text: match[2].trim() });
+            }
+
+            // D) Extract Answer and Feedback
+            const ansMatch = answerAndFeedback.match(/Answers?:\s*([A-E]).*?Feedback:\s*([\s\S]*)/i);
+            let correctAnswer = null;
+            let feedbackText = "Feedback was not provided.";
+            
+            if (ansMatch) {
+                correctAnswer = ansMatch[1].trim().toUpperCase();
+                feedbackText = ansMatch[2].trim();
+            } else {
+                const simpleAnsMatch = answerAndFeedback.match(/Answers?:\s*([A-E])/i);
+                if (simpleAnsMatch) correctAnswer = simpleAnsMatch[1].trim().toUpperCase();
+            }
+
+            if (options.length > 0) {
+                quizQuestions.push({ 
+                    question: questionText, 
+                    options: options, 
+                    correctLetter: correctAnswer, 
+                    feedback: feedbackText, 
+                    selectedLetter: null 
+                });
+                
+                let qHTML = `<div class="q-block" id="qBlock_${index}">
+                    <div class="q-text">${index + 1}. ${questionText}</div>`;
+                
+                options.forEach((opt) => {
+                    qHTML += `<label class="q-option">
+                        <input type="radio" name="q_${index}" value="${opt.letter}" onchange="selectOption(${index}, '${opt.letter}')"> 
+                        ${opt.letter}) ${opt.text}
+                    </label>`;
+                });
+                
+                qHTML += `<div id="qFeedback_${index}" class="ai-feedback"></div></div>`;
+                container.innerHTML += qHTML;
+            }
         });
-        speakText(fullSpeech); 
+
+        if (quizQuestions.length > 0) {
+            document.getElementById(btnId).style.display = "block";
+        }
     }
 
-    async function submitReceptiveTask() {
-        if (questionsData.length === 0) return alert("No questions available to submit.");
-        
-        let studentAnswers = [];
-        let combinedPrompts = "";
-        let combinedAnswers = "";
+    function selectOption(qIndex, letter) {
+        quizQuestions[qIndex].selectedLetter = letter;
+    }
 
-        for (let i = 0; i < questionsData.length; i++) {
-            const selected = document.querySelector(`input[name="q${i}"]:checked`);
-            if (!selected) {
-                alert(`Please select an answer for Question ${i + 1}.`);
+    // ==========================================
+    // UNIFIED SUBMISSION: INSTANT AUTO-GRADE
+    // ==========================================
+    async function submitAutoQuiz() {
+        document.getElementById('status').innerText = "Grading...";
+        
+        for (let i = 0; i < quizQuestions.length; i++) {
+            if (!quizQuestions[i].selectedLetter) {
+                alert("Please answer all questions before submitting.");
+                document.getElementById('status').innerText = "Waiting for completion.";
                 return;
             }
-            studentAnswers.push(selected.value);
-            combinedPrompts += `Q${i+1}: ${questionsData[i].prompt}\n`;
-            combinedAnswers += `A${i+1}: ${selected.value}\n`;
         }
+
+        let totalScore = 0;
+        let studentAnswersRecord = "";
         
-        const submitBtn = document.getElementById('submitReceptiveBtn');
-        submitBtn.disabled = true;
-        document.getElementById('status').innerText = "AI is grading your answers...";
-        document.getElementById('feedback-box').style.display = 'none'; 
-        
-        const payload = { 
-            studentId, 
-            lessonId, 
-            prompt: combinedPrompts.trim(), 
-            text: combinedAnswers.trim(), 
-            taskType: taskType, 
-            type: "assessment" 
-        };
-        
-        try {
-            const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
-            const result = await response.json();
+        for (let i = 0; i < quizQuestions.length; i++) {
+            const q = quizQuestions[i];
+            const fbBox = document.getElementById(`qFeedback_${i}`);
+            fbBox.style.display = "block";
             
-            document.getElementById('feedback-box').style.display = 'block';
-            document.getElementById('scoreDisplay').innerText = result.score !== undefined ? result.score : "N/A";
-            document.getElementById('replyDisplay').innerText = result.reply || "Submission recorded.";
-            document.getElementById('status').innerText = "✅ Evaluation Complete!";
-        } catch (e) {
-            document.getElementById('status').innerText = "Error grading submission.";
-        } finally {
-            submitBtn.disabled = false;
+            studentAnswersRecord += `Q${i+1}: Selected ${q.selectedLetter}. `;
+
+            if (q.correctLetter && q.selectedLetter === q.correctLetter) {
+                fbBox.style.borderLeftColor = "var(--success)";
+                fbBox.style.backgroundColor = "#e8f5e9";
+                fbBox.innerHTML = `<strong>✅ Correct!</strong> ${q.feedback}`;
+                totalScore++;
+            } else if (q.correctLetter) {
+                fbBox.style.borderLeftColor = "var(--error)";
+                fbBox.style.backgroundColor = "#ffebee";
+                fbBox.innerHTML = `<strong>❌ Incorrect.</strong> The correct answer was <strong>${q.correctLetter}</strong>. <br>${q.feedback}`;
+            } else {
+                fbBox.innerHTML = `<strong>Response recorded.</strong>`;
+            }
         }
+        
+        const finalScoreText = `${totalScore}/${quizQuestions.length}`;
+        document.getElementById('status').innerText = `Done! Score: ${finalScoreText}`;
+        showFeedback({score: finalScoreText, reply: "Review your feedback under each question above!"});
+
+        try {
+            await fetch(SCRIPT_URL, {
+                method: "POST",
+                body: JSON.stringify({
+                    studentId: studentId,
+                    lessonId: lessonId,
+                    taskType: taskType, 
+                    prompt: "Auto-graded Quiz",
+                    text: studentAnswersRecord, 
+                    score2: finalScoreText,     
+                    type: "assessment"
+                })
+            });
+        } catch(e) { console.error("Logging error", e); }
+    }
+
+    // --- TEXT / AUDIO SUBMISSIONS ---
+    async function submitTextTask(type) {
+        const text = type === 'writing' ? document.getElementById('writingInput').value : "";
+        if(!text) return alert("Please enter some text.");
+        
+        document.getElementById('status').innerText = "AI is evaluating...";
+        const response = await fetch(SCRIPT_URL, {
+            method: "POST",
+            body: JSON.stringify({ studentId, lessonId, prompt: document.getElementById('writingPrompt').innerText, text, taskType: "writing", type: "assessment" })
+        });
+        const result = await response.json();
+        showFeedback(result);
+    }
+
+    function showFeedback(result) {
+        document.getElementById('feedback-box').style.display = "block";
+        document.getElementById('scoreDisplay').innerText = result.score;
+        document.getElementById('replyDisplay').innerText = result.reply;
+        document.getElementById('status').innerText = "Task Complete!";
+    }
+
+    // --- VOICE LOGIC ---
+    function toggleRecording() {
+        if (!isRecording) {
+            recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.onresult = (event) => submitAudioTask(event.results[0][0].transcript);
+            recognition.start();
+            document.getElementById('recordBtn').classList.add('recording');
+            isRecording = true;
+        } else {
+            recognition.stop();
+            isRecording = false;
+        }
+    }
+
+    async function submitAudioTask(transcript) {
+        document.getElementById('status').innerText = "Analyzing speech...";
+        const response = await fetch(SCRIPT_URL, {
+            method: "POST",
+            body: JSON.stringify({ studentId, lessonId, prompt: currentPrompt, text: transcript, taskType: "speaking", type: "assessment" })
+        });
+        showFeedback(await response.json());
+        document.getElementById('recordBtn').classList.remove('recording');
     }
 
     window.onload = loadData;
