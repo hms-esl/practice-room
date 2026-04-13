@@ -301,7 +301,7 @@
 
         // --- ATTEMPT 1 LOGIC (If they made mistakes) ---
         if (attemptCount === 1 && !allCorrect) {
-            attemptsData.attempt1 = studentAnswersRecord + `(Score: ${currentScore}/${quizQuestions.length})`;
+            attemptsData.attempt1 = studentAnswersRecord;
             document.getElementById('status').innerText = "Generating AI hints for your missed questions... ⏳";
             
             // FIXED: Bundle ALL wrong questions into ONE API request to stop Quota Crashes
@@ -357,7 +357,7 @@
             document.getElementById('feedback-box').style.display = "block";
             document.getElementById('feedback-box').style.borderLeftColor = "var(--writing)";
             document.getElementById('feedback-box').style.backgroundColor = "#fff3cd";
-            document.getElementById('scoreDisplay').innerText = `Attempt 1: ${currentScore}/${quizQuestions.length}`;
+            document.getElementById('scoreDisplay').innerText = `Attempt 1: ${currentScore} out of ${quizQuestions.length}`;
             document.getElementById('replyDisplay').innerHTML = `<strong>💡 AI Hints:</strong><br><br>${hintText.replace(/\n/g, '<br>')}`;
             
             attemptCount = 2;
@@ -369,9 +369,9 @@
 
         // --- FINAL SUBMISSION (Attempt 2, or Perfect Attempt 1) ---
         if (attemptCount === 1) {
-            attemptsData.attempt1 = studentAnswersRecord + `(Score: ${currentScore}/${quizQuestions.length})`;
+            attemptsData.attempt1 = studentAnswersRecord;
         } else {
-            attemptsData.attempt2 = studentAnswersRecord + `(Score: ${currentScore}/${quizQuestions.length})`;
+            attemptsData.attempt2 = studentAnswersRecord;
         }
 
         // Display Full AI Feedback & Correct Answers
@@ -391,7 +391,7 @@
             }
         }
         
-        const finalScoreText = `${currentScore}/${quizQuestions.length}`;
+        const finalScoreText = `${currentScore} out of ${quizQuestions.length}`;
         document.getElementById('status').innerText = `Done! Final Score: ${finalScoreText}`;
         
         // Reset Feedback Box styling and show final score
@@ -410,7 +410,7 @@
                     studentId: studentId,
                     lessonId: lessonId,
                     taskType: taskType, 
-                    prompt: "Auto-graded Quiz",
+                    prompt: "Multiple Choice Questions",
                     text: combinedTextForSheet, 
                     score2: finalScoreText,     
                     type: "assessment"
