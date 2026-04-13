@@ -116,40 +116,38 @@
     }
 
     function formatAndDisplayLesson(rawText) {
-        // Find the start of the Listening Task and clip everything after it
         let coreLesson = rawText;
-        if (rawText.includes("LISTENING TASK")) {
+        if (rawText.match(/LISTENING TASK/i)) {
             coreLesson = rawText.split(/LISTENING TASK/i)[0].trim();
         } else if (rawText.match(/(🎧|🗣️|❓|📝)/)) {
-            coreLesson = rawText.split(/(🎧|🗣️|❓|📝)/)[0].trim(); // Fallback
+            coreLesson = rawText.split(/(🎧|🗣️|❓|📝)/)[0].trim();
         }
         
-        cleanLessonTextForTTS = coreLesson.replace(/[\*#]/g, ''); // Save clean version for text-to-speech
+        cleanLessonTextForTTS = coreLesson.replace(/[\*#]/g, ''); 
 
-        // Convert Markdown to beautiful HTML
-        coreLesson = coreLesson.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Bold
+        coreLesson = coreLesson.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); 
         coreLesson = coreLesson.replace(/(🎯 TITLE:.*)/g, '<h3 class="lesson-header">$1</h3>');
         coreLesson = coreLesson.replace(/(📖 ANCHOR)/g, '<h4 class="lesson-section">$1</h4>');
         coreLesson = coreLesson.replace(/(📝 SUMMARY)/g, '<h4 class="lesson-section">$1</h4>');
         coreLesson = coreLesson.replace(/(🧠 ACADEMIC VOCABULARY)/g, '<h4 class="lesson-section">$1</h4>');
         
-        // Preserve line breaks
         coreLesson = coreLesson.replace(/\n/g, '<br>');
         
         document.getElementById('lessonContent').innerHTML = coreLesson;
     }
 
     function parseListening(text) {
-        // Safely extract just the Listening Task section
+        // 1. Isolate everything AFTER "LISTENING TASK"
         let listeningArea = text;
-        if (text.includes("LISTENING TASK")) {
+        if (text.match(/LISTENING TASK/i)) {
             listeningArea = text.split(/LISTENING TASK/i)[1];
         }
-        // Quarantine the text by clipping at the next logical task, regardless of emojis
-        if (listeningArea.includes("SPEAKING TASK")) {
-            listeningArea = listeningArea.split(/SPEAKING TASK/i)[0];
-        } else if (listeningArea.includes("COMPREHENSION TASK")) {
-            listeningArea = listeningArea.split(/COMPREHENSION TASK/i)[0];
+
+        // 2. CHOP at the very next major task (Comprehension, Speaking, or Writing)
+        // This stops the Comprehension multiple-choice from bleeding in!
+        const nextTaskRegex = /(COMPREHENSION TASK|SPEAKING TASK|WRITING TASK|🧠|🗣️|📝)/i;
+        if (listeningArea.match(nextTaskRegex)) {
+            listeningArea = listeningArea.split(nextTaskRegex)[0];
         }
 
         // Extract script and question securely
@@ -161,13 +159,14 @@
         
         document.getElementById('listeningQuestionText').innerText = listeningQuestionText;
 
-        // Look for options ONLY within our safely quarantined listeningArea
+        // Extract options ONLY after the </QUESTION> tag within the quarantined area
         let afterQuestion = listeningArea;
-        if (listeningArea.includes("</QUESTION>")) {
+        if (listeningArea.match(/<\/QUESTION>/i)) {
             afterQuestion = listeningArea.split(/<\/QUESTION>/i)[1];
         }
         
-        const options = afterQuestion.match(/[A-E][\)\.]\s+.+/gi) || [];
+        // Match A), B), C), D) line by line, ensuring it stops at line breaks
+        const options = afterQuestion.match(/[A-E][\)\.]\s+[^\n]+/gi) || [];
         
         let optionsHTML = "";
         if (options.length === 0) {
@@ -181,7 +180,6 @@
         document.getElementById('listeningOptions').innerHTML = optionsHTML;
     }
 
-    // --- TEXT TO SPEECH (TTS) LOGIC ---
     function speakText(val) {
         window.speechSynthesis.cancel();
         const msg = new SpeechSynthesisUtterance(val);
@@ -199,17 +197,16 @@
         const selected = document.querySelector('input[name="listenOpt"]:checked');
         if(!selected) return alert("Please select an answer.");
         
-        // Disable button while processing
         const submitBtn = document.getElementById('submitListeningBtn');
         submitBtn.disabled = true;
         document.getElementById('status').innerText = "AI is grading your answer...";
-        document.getElementById('feedback-box').style.display = 'none'; // Hide previous feedback if any
+        document.getElementById('feedback-box').style.display = 'none'; 
         
         const payload = { 
             studentId, 
             lessonId, 
             prompt: listeningQuestionText, 
-            text: selected.value, // We pass the answer as 'text' to the backend
+            text: selected.value, 
             taskType: "Comprehension", 
             type: "assessment" 
         };
@@ -218,7 +215,6 @@
             const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
             const result = await response.json();
             
-            // Show Feedback
             document.getElementById('feedback-box').style.display = 'block';
             document.getElementById('scoreDisplay').innerText = result.score || "N/A";
             document.getElementById('replyDisplay').innerText = result.reply || "Submission recorded.";
