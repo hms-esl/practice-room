@@ -43,6 +43,7 @@
     <div class="card lesson-card">
         <h2 id="lessonTitle">📚 Today's Lesson</h2>
         <div id="lessonContent" class="lesson-text">Loading...</div>
+        <button id="readLessonBtn" class="btn btn-listen" onclick="speakText(document.getElementById('lessonContent').innerText)" style="display:none; margin-top: 15px;">🔊 Read Lesson Aloud</button>
     </div>
 
     <div class="card">
@@ -56,7 +57,8 @@
 
         <div id="listeningUI" style="display: none;">
             <button class="btn btn-listen" onclick="playAudioTask()">🔊 Play Audio Story</button>
-            <div id="listeningQuizContainer"></div>
+            <button class="btn btn-listen" onclick="readAllQuestions()">🔊 Read Questions & Options</button>
+            <div id="listeningQuizContainer" style="margin-top: 15px;"></div>
             <button id="submitListenBtn" class="btn btn-record" onclick="submitAutoQuiz()" style="display:none;">Submit Answers</button>
         </div>
 
@@ -91,6 +93,10 @@
     let isRecording = false;
     let recognition;
     let quizQuestions = [];
+    
+    // Two-Attempt Tracker
+    let attemptCount = 1;
+    let attemptsData = { attempt1: "", attempt2: "" };
 
     async function loadData() {
         try {
@@ -101,6 +107,11 @@
             const readingMatch = data.fullLesson.split(/🎧\s*LISTENING TASK|LISTENING TASK/i);
             const readingMaterialOnly = readingMatch[0].trim();
             document.getElementById('lessonContent').innerText = readingMaterialOnly;
+
+            // ELPA21 Guardrail: Only show read aloud for non-comprehension tasks
+            if (taskType !== 'comprehension') {
+                document.getElementById('readLessonBtn').style.display = "block";
+            }
 
             // Route UI
             if (taskType === 'comprehension') {
@@ -155,11 +166,23 @@
     }
 
     function speakText(val) {
+        window.speechSynthesis.cancel(); // Prevents audio overlapping
         const msg = new SpeechSynthesisUtterance(val);
         window.speechSynthesis.speak(msg);
     }
 
     function playAudioTask() { speakText(audioScript); }
+
+    function readAllQuestions() {
+        let textToRead = "";
+        quizQuestions.forEach((q, i) => {
+            textToRead += `Question ${i + 1}. ${q.question}. `;
+            q.options.forEach(opt => {
+                textToRead += `Option ${opt.letter}. ${opt.text}. `;
+            });
+        });
+        speakText(textToRead);
+    }
 
     // ==========================================
     // UNIFIED BUILDER: Auto-Extracts Questions & Keys
@@ -186,27 +209,24 @@
         }
 
         blocks.forEach((block, index) => {
-            // A) Separate Question Text from Options
-            // Look for the first A) or A. to split
             const qSplit = block.split(/(?=\n?\s*A[\)\.])|(?=\s+A[\)\.])/i);
             const questionText = qSplit[0].trim();
             const restOfBlock = qSplit.slice(1).join(" ");
 
-            // B) Separate Options from "Answers: / Feedback:"
-            // This guarantees the feedback is NEVER parsed as an option.
+            // Separate Options from "Answers: / Feedback:" so feedback NEVER becomes an option
             const feedbackSplit = restOfBlock.split(/Answers?:/i);
             const optionsSection = feedbackSplit[0];
             const answerAndFeedback = feedbackSplit[1] ? "Answers: " + feedbackSplit[1] : "";
 
-            // C) Extract Options A, B, C
+            // FIXED: Removed case-insensitivity ('i' flag) to prevent lowercase endings (like "e.") from cutting off words
             const options = [];
-            const optionRegex = /([A-E][\)\.])\s*([\s\S]+?)(?=(?:\n?\s*[A-E][\)\.])|$)/gi;
+            const optionRegex = /([A-E][\)\.])\s*([\s\S]+?)(?=(?:\n?\s*[A-E][\)\.])|$)/g;
             let match;
             while ((match = optionRegex.exec(optionsSection)) !== null) {
                 options.push({ letter: match[1].charAt(0).toUpperCase(), text: match[2].trim() });
             }
 
-            // D) Extract Answer and Feedback
+            // Extract Answer and Feedback
             const ansMatch = answerAndFeedback.match(/Answers?:\s*([A-E]).*?Feedback:\s*([\s\S]*)/i);
             let correctAnswer = null;
             let feedbackText = "Feedback was not provided.";
@@ -253,7 +273,7 @@
     }
 
     // ==========================================
-    // UNIFIED SUBMISSION: INSTANT AUTO-GRADE
+    // UNIFIED SUBMISSION: TWO-ATTEMPT LOGIC
     // ==========================================
     async function submitAutoQuiz() {
         document.getElementById('status').innerText = "Grading...";
@@ -266,33 +286,80 @@
             }
         }
 
-        let totalScore = 0;
-        let studentAnswersRecord = "";
+        let currentScore = 0;
+        let studentAnswersRecord = `Attempt ${attemptCount}: `;
+        let allCorrect = true;
         
+        // Grade answers locally
+        for (let i = 0; i < quizQuestions.length; i++) {
+            const q = quizQuestions[i];
+            studentAnswersRecord += `Q${i+1}: ${q.selectedLetter}. `;
+            if (q.correctLetter && q.selectedLetter === q.correctLetter) {
+                currentScore++;
+            } else {
+                allCorrect = false;
+            }
+        }
+
+        // --- ATTEMPT 1 LOGIC (If they made mistakes) ---
+        if (attemptCount === 1 && !allCorrect) {
+            attemptsData.attempt1 = studentAnswersRecord + `(Score: ${currentScore}/${quizQuestions.length})`;
+            
+            for (let i = 0; i < quizQuestions.length; i++) {
+                const q = quizQuestions[i];
+                const fbBox = document.getElementById(`qFeedback_${i}`);
+                fbBox.style.display = "block";
+                
+                if (q.correctLetter && q.selectedLetter === q.correctLetter) {
+                    fbBox.style.borderLeftColor = "var(--success)";
+                    fbBox.style.backgroundColor = "#e8f5e9";
+                    fbBox.innerHTML = `<strong>✅ Correct!</strong>`;
+                } else {
+                    fbBox.style.borderLeftColor = "var(--writing)";
+                    fbBox.style.backgroundColor = "#fff3cd";
+                    const hintSource = taskType === 'listening' ? "audio story" : "reading material";
+                    fbBox.innerHTML = `<strong>❌ Not quite.</strong> Revisit the ${hintSource} and try again!`;
+                }
+            }
+            
+            attemptCount = 2;
+            document.getElementById('status').innerText = "Please correct your mistakes and submit Attempt 2.";
+            const btnId = taskType === 'comprehension' ? 'submitQuizBtn' : 'submitListenBtn';
+            document.getElementById(btnId).innerText = "Submit Attempt 2";
+            return;
+        }
+
+        // --- FINAL SUBMISSION (Attempt 2, or Perfect Attempt 1) ---
+        if (attemptCount === 1) {
+            attemptsData.attempt1 = studentAnswersRecord + `(Score: ${currentScore}/${quizQuestions.length})`;
+        } else {
+            attemptsData.attempt2 = studentAnswersRecord + `(Score: ${currentScore}/${quizQuestions.length})`;
+        }
+
+        // Display Full AI Feedback & Correct Answers
         for (let i = 0; i < quizQuestions.length; i++) {
             const q = quizQuestions[i];
             const fbBox = document.getElementById(`qFeedback_${i}`);
             fbBox.style.display = "block";
             
-            studentAnswersRecord += `Q${i+1}: Selected ${q.selectedLetter}. `;
-
             if (q.correctLetter && q.selectedLetter === q.correctLetter) {
                 fbBox.style.borderLeftColor = "var(--success)";
                 fbBox.style.backgroundColor = "#e8f5e9";
                 fbBox.innerHTML = `<strong>✅ Correct!</strong> ${q.feedback}`;
-                totalScore++;
             } else if (q.correctLetter) {
                 fbBox.style.borderLeftColor = "var(--error)";
                 fbBox.style.backgroundColor = "#ffebee";
                 fbBox.innerHTML = `<strong>❌ Incorrect.</strong> The correct answer was <strong>${q.correctLetter}</strong>. <br>${q.feedback}`;
-            } else {
-                fbBox.innerHTML = `<strong>Response recorded.</strong>`;
             }
         }
         
-        const finalScoreText = `${totalScore}/${quizQuestions.length}`;
-        document.getElementById('status').innerText = `Done! Score: ${finalScoreText}`;
+        const finalScoreText = `${currentScore}/${quizQuestions.length}`;
+        document.getElementById('status').innerText = `Done! Final Score: ${finalScoreText}`;
         showFeedback({score: finalScoreText, reply: "Review your feedback under each question above!"});
+
+        // Combine both attempts for the spreadsheet
+        let combinedTextForSheet = attemptsData.attempt1;
+        if (attemptsData.attempt2) combinedTextForSheet += " | " + attemptsData.attempt2;
 
         try {
             await fetch(SCRIPT_URL, {
@@ -302,12 +369,17 @@
                     lessonId: lessonId,
                     taskType: taskType, 
                     prompt: "Auto-graded Quiz",
-                    text: studentAnswersRecord, 
+                    text: combinedTextForSheet, 
                     score2: finalScoreText,     
                     type: "assessment"
                 })
             });
         } catch(e) { console.error("Logging error", e); }
+
+        // Disable UI Elements
+        const btnId = taskType === 'comprehension' ? 'submitQuizBtn' : 'submitListenBtn';
+        document.getElementById(btnId).style.display = "none";
+        document.querySelectorAll('input[type="radio"]').forEach(r => r.disabled = true);
     }
 
     // --- TEXT / AUDIO SUBMISSIONS ---
