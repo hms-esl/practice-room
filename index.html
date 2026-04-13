@@ -40,6 +40,12 @@
 <body>
 
 <div class="container">
+    
+    <div id="topAudioControls" style="display: none; width: 100%; margin-bottom: 20px; flex-direction: column; gap: 10px;">
+        <button class="btn btn-listen" onclick="playAudioTask()">🔊 Play Audio Story</button>
+        <button class="btn btn-listen" onclick="readAllQuestions()">🔊 Read Questions & Options</button>
+    </div>
+
     <div class="card lesson-card">
         <h2 id="lessonTitle">📚 Today's Lesson</h2>
         <div id="lessonContent" class="lesson-text">Loading...</div>
@@ -56,9 +62,7 @@
         </div>
 
         <div id="listeningUI" style="display: none;">
-            <button class="btn btn-listen" onclick="playAudioTask()">🔊 Play Audio Story</button>
-            <button class="btn btn-listen" onclick="readAllQuestions()">🔊 Read Questions & Options</button>
-            <div id="listeningQuizContainer" style="margin-top: 15px;"></div>
+            <div id="listeningQuizContainer"></div>
             <button id="submitListenBtn" class="btn btn-record" onclick="submitAutoQuiz()" style="display:none;">Submit Answers</button>
         </div>
 
@@ -86,7 +90,10 @@
     const urlParams = new URLSearchParams(window.location.search);
     const lessonId = urlParams.get('lessonId');
     const studentId = urlParams.get('studentId');
-    const taskType = urlParams.get('taskType') || 'speaking';
+    
+    // Safety trim for TaskType
+    const rawTaskType = urlParams.get('taskType') || 'speaking';
+    const taskType = rawTaskType.trim().toLowerCase();
 
     let currentPrompt = "";
     let audioScript = "";
@@ -122,6 +129,7 @@
                 buildUniversalQuiz(isolatedComp, 'quizContainer', 'submitQuizBtn');
                 
             } else if (taskType === 'listening') {
+                document.getElementById('topAudioControls').style.display = "flex"; // Show buttons at top
                 showUI('listeningUI', '🎧 Listening Task');
                 parseListening(data.fullLesson);
                 
@@ -192,13 +200,13 @@
         container.innerHTML = "";
         quizQuestions = [];
 
-        // 1. Clean up <QUESTION> tags in case AI used them
+        // 1. Clean up <QUESTION> tags
         let cleanText = rawText.replace(/<\/?QUESTION>/gi, "\n");
 
         // 2. Split into blocks by question numbers (1., 2., 3.)
         let blocks = cleanText.split(/\n\s*\d+\.\s+/).filter(b => b.trim().length > 10);
         
-        // Fallback: If split by newline fails, try splitting just by "1. "
+        // Fallback
         if (blocks.length === 0) {
             blocks = cleanText.split(/(?:^|\s)\d+\.\s+/).filter(b => b.trim().length > 10);
         }
@@ -218,7 +226,7 @@
             const optionsSection = feedbackSplit[0];
             const answerAndFeedback = feedbackSplit[1] ? "Answers: " + feedbackSplit[1] : "";
 
-            // FIXED: Removed case-insensitivity ('i' flag) to prevent lowercase endings (like "e.") from cutting off words
+            // Extract Options A, B, C (Case sensitive to prevent truncating text like 'game.')
             const options = [];
             const optionRegex = /([A-E][\)\.])\s*([\s\S]+?)(?=(?:\n?\s*[A-E][\)\.])|$)/g;
             let match;
@@ -226,18 +234,17 @@
                 options.push({ letter: match[1].charAt(0).toUpperCase(), text: match[2].trim() });
             }
 
-            // Extract Answer and Feedback
-            const ansMatch = answerAndFeedback.match(/Answers?:\s*([A-E]).*?Feedback:\s*([\s\S]*)/i);
+            // Foolproof extraction of Answer and Feedback using individual checks
             let correctAnswer = null;
             let feedbackText = "Feedback was not provided.";
             
-            if (ansMatch) {
-                correctAnswer = ansMatch[1].trim().toUpperCase();
-                feedbackText = ansMatch[2].trim();
-            } else {
-                const simpleAnsMatch = answerAndFeedback.match(/Answers?:\s*([A-E])/i);
-                if (simpleAnsMatch) correctAnswer = simpleAnsMatch[1].trim().toUpperCase();
-            }
+            const ansRegex = /Answers?:\s*([A-E])/i;
+            const ansMatch = answerAndFeedback.match(ansRegex);
+            if (ansMatch) correctAnswer = ansMatch[1].toUpperCase();
+
+            const fbRegex = /Feedback:\s*([\s\S]*)/i;
+            const fbMatch = answerAndFeedback.match(fbRegex);
+            if (fbMatch) feedbackText = fbMatch[1].trim();
 
             if (options.length > 0) {
                 quizQuestions.push({ 
@@ -273,15 +280,18 @@
     }
 
     // ==========================================
-    // UNIFIED SUBMISSION: TWO-ATTEMPT LOGIC
+    // UNIFIED SUBMISSION: HINTS & TWO-ATTEMPT LOGIC
     // ==========================================
     async function submitAutoQuiz() {
         document.getElementById('status').innerText = "Grading...";
+        const submitBtnId = taskType === 'comprehension' ? 'submitQuizBtn' : 'submitListenBtn';
+        document.getElementById(submitBtnId).disabled = true;
         
         for (let i = 0; i < quizQuestions.length; i++) {
             if (!quizQuestions[i].selectedLetter) {
                 alert("Please answer all questions before submitting.");
                 document.getElementById('status').innerText = "Waiting for completion.";
+                document.getElementById(submitBtnId).disabled = false;
                 return;
             }
         }
@@ -290,7 +300,7 @@
         let studentAnswersRecord = `Attempt ${attemptCount}: `;
         let allCorrect = true;
         
-        // Grade answers locally
+        // Count correct answers
         for (let i = 0; i < quizQuestions.length; i++) {
             const q = quizQuestions[i];
             studentAnswersRecord += `Q${i+1}: ${q.selectedLetter}. `;
@@ -304,6 +314,7 @@
         // --- ATTEMPT 1 LOGIC (If they made mistakes) ---
         if (attemptCount === 1 && !allCorrect) {
             attemptsData.attempt1 = studentAnswersRecord + `(Score: ${currentScore}/${quizQuestions.length})`;
+            document.getElementById('status').innerText = "Generating AI hints for your missed questions... ⏳";
             
             for (let i = 0; i < quizQuestions.length; i++) {
                 const q = quizQuestions[i];
@@ -313,19 +324,38 @@
                 if (q.correctLetter && q.selectedLetter === q.correctLetter) {
                     fbBox.style.borderLeftColor = "var(--success)";
                     fbBox.style.backgroundColor = "#e8f5e9";
-                    fbBox.innerHTML = `<strong>✅ Correct!</strong>`;
+                    fbBox.innerHTML = `<strong>✅ Correct!</strong> ${q.feedback}`;
                 } else {
                     fbBox.style.borderLeftColor = "var(--writing)";
                     fbBox.style.backgroundColor = "#fff3cd";
-                    const hintSource = taskType === 'listening' ? "audio story" : "reading material";
-                    fbBox.innerHTML = `<strong>❌ Not quite.</strong> Revisit the ${hintSource} and try again!`;
+                    fbBox.innerHTML = `<strong>❌ Incorrect.</strong> <em>Generating hint... ⏳</em>`;
+                    
+                    // Call the new "Hint" backend to generate a specific pedagogical clue
+                    try {
+                        const wrongOptionText = q.options.find(o => o.letter === q.selectedLetter).text;
+                        const hintResponse = await fetch(SCRIPT_URL, {
+                            method: "POST",
+                            body: JSON.stringify({
+                                studentId: studentId,
+                                lessonId: lessonId,
+                                taskType: "hint", 
+                                prompt: q.question,
+                                text: wrongOptionText, 
+                                type: "assessment"
+                            })
+                        });
+                        const hintResult = await hintResponse.json();
+                        fbBox.innerHTML = `<strong>💡 AI Hint:</strong> ${hintResult.reply}`;
+                    } catch(e) {
+                        fbBox.innerHTML = `<strong>❌ Not quite.</strong> Revisit the material and try again!`;
+                    }
                 }
             }
             
             attemptCount = 2;
-            document.getElementById('status').innerText = "Please correct your mistakes and submit Attempt 2.";
-            const btnId = taskType === 'comprehension' ? 'submitQuizBtn' : 'submitListenBtn';
-            document.getElementById(btnId).innerText = "Submit Attempt 2";
+            document.getElementById('status').innerText = "Review your hints, correct your mistakes, and submit Attempt 2.";
+            document.getElementById(submitBtnId).innerText = "Submit Attempt 2";
+            document.getElementById(submitBtnId).disabled = false;
             return;
         }
 
@@ -355,9 +385,9 @@
         
         const finalScoreText = `${currentScore}/${quizQuestions.length}`;
         document.getElementById('status').innerText = `Done! Final Score: ${finalScoreText}`;
-        showFeedback({score: finalScoreText, reply: "Review your feedback under each question above!"});
+        showFeedback({score: finalScoreText, reply: "Scores have been recorded."});
 
-        // Combine both attempts for the spreadsheet
+        // Fast-Lane: Send combined attempts to the spreadsheet instantly
         let combinedTextForSheet = attemptsData.attempt1;
         if (attemptsData.attempt2) combinedTextForSheet += " | " + attemptsData.attempt2;
 
@@ -376,9 +406,7 @@
             });
         } catch(e) { console.error("Logging error", e); }
 
-        // Disable UI Elements
-        const btnId = taskType === 'comprehension' ? 'submitQuizBtn' : 'submitListenBtn';
-        document.getElementById(btnId).style.display = "none";
+        document.getElementById(submitBtnId).style.display = "none";
         document.querySelectorAll('input[type="radio"]').forEach(r => r.disabled = true);
     }
 
