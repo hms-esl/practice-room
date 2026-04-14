@@ -226,11 +226,16 @@
             let correctAnswer = null;
             let feedbackText = "Feedback was not provided.";
             
-            const ansRegex = /Answers?:\s*([A-E])/i;
+            // FIXED: Catches "Answer: A", "Correct Answer: A", "Answers : A", etc.
+            const ansRegex = /(?:Correct\s*)?Answers?.*?(?:[A-E]\)|\b[A-E]\b)/i;
             const ansMatch = answerAndFeedback.match(ansRegex);
-            if (ansMatch) correctAnswer = ansMatch[1].toUpperCase();
+            if (ansMatch) {
+                const letterMatch = ansMatch[0].match(/[A-E]/i);
+                if (letterMatch) correctAnswer = letterMatch[0].toUpperCase();
+            }
 
-            const fbRegex = /Feedback:\s*([\s\S]*)/i;
+            // FIXED: Catches "Feedback:" or "Explanation:"
+            const fbRegex = /(?:Feedback|Explanation):\s*([\s\S]*)/i;
             const fbMatch = answerAndFeedback.match(fbRegex);
             if (fbMatch) feedbackText = fbMatch[1].trim();
 
@@ -304,7 +309,7 @@
             attemptsData.attempt1 = studentAnswersRecord;
             document.getElementById('status').innerText = "Generating AI hints for your missed questions... ⏳";
             
-            // FIXED: Bundle ALL wrong questions into ONE API request to stop Quota Crashes
+            // Bundle ALL wrong questions into ONE API request to stop Quota Crashes
             let wrongQuestionsSummary = "";
             for (let i = 0; i < quizQuestions.length; i++) {
                 const q = quizQuestions[i];
@@ -316,6 +321,10 @@
             }
 
             let hintText = "Revisit the material and try again!";
+            
+            // FIXED: Dynamically tell the AI which text to look at!
+            let hintContextName = taskType === 'comprehension' ? "reading text" : "audio script";
+
             try {
                 const hintResponse = await fetch(SCRIPT_URL, {
                     method: "POST",
@@ -323,7 +332,7 @@
                         studentId: studentId,
                         lessonId: lessonId,
                         taskType: "hint", 
-                        prompt: "I missed the following questions. Please give me a brief, 1-sentence hint for EACH question to guide my thinking without giving away the answer.",
+                        prompt: `I missed the following questions. Look at the ${hintContextName} from the lesson and give me a brief, 1-sentence hint for EACH question to guide my thinking without giving away the direct answer.`,
                         text: wrongQuestionsSummary, 
                         type: "assessment"
                     })
@@ -384,10 +393,12 @@
                 fbBox.style.borderLeftColor = "var(--success)";
                 fbBox.style.backgroundColor = "#e8f5e9";
                 fbBox.innerHTML = `<strong>✅ Correct!</strong> ${q.feedback}`;
-            } else if (q.correctLetter) {
+            } else {
+                // FIXED: Break the circular loop! This guarantees Attempt 2 updates, even if the correct letter parse failed.
                 fbBox.style.borderLeftColor = "var(--error)";
                 fbBox.style.backgroundColor = "#ffebee";
-                fbBox.innerHTML = `<strong>❌ Incorrect.</strong> The correct answer was <strong>${q.correctLetter}</strong>. <br>${q.feedback}`;
+                const displayCorrect = q.correctLetter ? `The correct answer was <strong>${q.correctLetter}</strong>.` : `<em>(Correct answer key could not be loaded)</em>.`;
+                fbBox.innerHTML = `<strong>❌ Incorrect.</strong> ${displayCorrect} <br>${q.feedback}`;
             }
         }
         
