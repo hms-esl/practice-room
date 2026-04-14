@@ -6,7 +6,16 @@
     <title>ELL Interactive Lesson</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
     <style>
-        :root { --primary: #4A90E2; --secondary: #50E3C2; --bg: #F4F7F9; --error: #FF4B2B; --success: #28a745; --writing: #f39c12; --listening: #9b59b6; }
+        :root { 
+            --primary: #4A90E2; 
+            --secondary: #50E3C2; 
+            --bg: #F4F7F9; 
+            --error: #FF4B2B; 
+            --success: #28a745; 
+            --writing: #f39c12; 
+            --listening: #9b59b6; 
+            --reflection: #e67e22; /* New color for Reflection */
+        }
         body { font-family: 'Poppins', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; min-height: 100vh; }
         .container { width: 100%; max-width: 600px; }
         
@@ -18,6 +27,7 @@
         .btn-listen { background: var(--listening); color: white; }
         .btn-record { background: var(--primary); color: white; }
         .btn-writing { background: var(--writing); color: white; }
+        .btn-reflection { background: var(--reflection); color: white; } /* New Reflection Button */
         
         .btn:disabled { background: #ccc; cursor: not-allowed; }
         .recording { background: var(--error) !important; animation: pulse 1.5s infinite; }
@@ -65,15 +75,21 @@
         </div>
 
         <div id="writingUI" style="display: none;">
-            <p id="writingPrompt" style="font-style: italic; color: #555; margin-bottom: 15px;"></p>
-            
             <label class="writing-label">1. Scaffolded Task</label>
+            <p id="scaffoldedPrompt" style="font-style: italic; color: #555; margin-bottom: 10px;"></p>
             <textarea id="writingScaffoldedText" placeholder="Write your scaffolded response here..."></textarea>
             
-            <label class="writing-label">2. Open-Ended Challenge</label>
+            <label class="writing-label" style="margin-top: 15px;">2. Open-Ended Challenge</label>
+            <p id="openEndedPrompt" style="font-style: italic; color: #555; margin-bottom: 10px;"></p>
             <textarea id="writingOpenEndedText" placeholder="Write your extended response here..."></textarea>
             
             <button id="submitWritingBtn" class="btn btn-writing" onclick="submitTextTask('writing')">Submit Writing</button>
+        </div>
+
+        <div id="reflectionUI" style="display: none;">
+            <p id="reflectionPrompt" style="font-style: italic; color: #555; margin-bottom: 15px;"></p>
+            <textarea id="reflectionText" placeholder="Write your thoughts and reflections here..."></textarea>
+            <button id="submitReflectionBtn" class="btn btn-reflection" onclick="submitTextTask('reflection')">Submit Reflection</button>
         </div>
 
         <div id="comprehensionUI" style="display: none;">
@@ -143,6 +159,10 @@
                 showUI('writingUI', '✍️ Writing Task');
                 parseWriting(data.fullLesson);
                 
+            } else if (taskType === 'reflection') {
+                showUI('reflectionUI', '🤔 Lesson Reflection');
+                parseReflection(data.fullLesson);
+
             } else {
                 showUI('speakingUI', '🗣️ Speaking Task');
                 parseSpeaking(data.fullLesson);
@@ -164,15 +184,31 @@
         document.getElementById('promptText').innerText = currentPrompt;
     }
 
+    // Updated parseWriting to split Scaffolded vs Open-Ended
     function parseWriting(text) {
         const parts = text.split(/📝\s*WRITING TASK|WRITING TASK/i);
-        const prompt = parts[1] || "Write your responses based on the lesson.";
-        document.getElementById('writingPrompt').innerText = prompt.trim();
+        let fullPrompt = parts[1] ? parts[1].trim() : "Write your responses based on the lesson.";
+        
+        const scaffoldedMatch = fullPrompt.match(/Scaffolded Task:?([\s\S]*?)(?:Open-Ended Challenge:?|$)/i);
+        const openEndedMatch = fullPrompt.match(/Open-Ended Challenge:?([\s\S]*)/i);
+        
+        let scaffoldedText = scaffoldedMatch ? scaffoldedMatch[1].trim() : fullPrompt;
+        let openEndedText = openEndedMatch ? openEndedMatch[1].trim() : "Write your extended response here.";
+
+        document.getElementById('scaffoldedPrompt').innerText = scaffoldedText;
+        document.getElementById('openEndedPrompt').innerText = openEndedText;
+    }
+
+    // New function for Reflection
+    function parseReflection(text) {
+        const parts = text.split(/🤔\s*REFLECTION TASK|REFLECTION TASK/i);
+        const prompt = parts[1] ? parts[1].trim() : "What were your biggest takeaways from today's lesson? How might you use this in the real world?";
+        document.getElementById('reflectionPrompt').innerText = prompt;
     }
 
     function parseListening(text) {
         audioScript = text.match(/<AUDIO_SCRIPT>([\s\S]*?)<\/AUDIO_SCRIPT>/i)?.[1] || "";
-        const quizAreaMatch = text.match(/LISTENING TASK([\s\S]*?)(?:🗣️\s*SPEAKING TASK|SPEAKING TASK|❓\s*COMPREHENSION TASK|COMPREHENSION TASK|📝\s*WRITING TASK|WRITING TASK|$)/i);
+        const quizAreaMatch = text.match(/LISTENING TASK([\s\S]*?)(?:🗣️\s*SPEAKING TASK|SPEAKING TASK|❓\s*COMPREHENSION TASK|COMPREHENSION TASK|📝\s*WRITING TASK|WRITING TASK|🤔\s*REFLECTION TASK|REFLECTION TASK|$)/i);
         let quizArea = quizAreaMatch ? quizAreaMatch[1] : "";
         quizArea = quizArea.replace(/<AUDIO_SCRIPT>[\s\S]*?<\/AUDIO_SCRIPT>/i, "");
         buildUniversalQuiz(quizArea, 'listeningQuizContainer', 'submitListenBtn');
@@ -236,14 +272,12 @@
             let correctAnswer = null;
             let feedbackText = "Feedback was not provided.";
             
-            // IMPROVED REGEX: Hunts down just the letter associated with the answer
             const ansRegex = /Answer.*?(?:([A-E])\)|([A-E])\b)/i;
             const ansMatch = answerAndFeedback.match(ansRegex);
             if (ansMatch) {
                 correctAnswer = (ansMatch[1] || ansMatch[2]).toUpperCase();
             }
 
-            // EXTRACT FEEDBACK
             const fbRegex = /(?:Feedback|Explanation):\s*([\s\S]*)/i;
             const fbMatch = answerAndFeedback.match(fbRegex);
             if (fbMatch) feedbackText = fbMatch[1].trim();
@@ -432,30 +466,63 @@
         document.querySelectorAll('input[type="radio"]').forEach(r => r.disabled = true);
     }
 
-    // --- DUAL-TEXT WRITING SUBMISSIONS ---
+    // --- TEXT TASKS SUBMISSION (Handles Writing & Reflection) ---
     async function submitTextTask(type) {
-        const text1 = document.getElementById('writingScaffoldedText').value.trim();
-        const text2 = document.getElementById('writingOpenEndedText').value.trim();
+        let text1 = "";
+        let text2 = "";
+        let combinedPrompt = "";
+        let submitBtnId = "";
 
-        if(!text1 && !text2) return alert("Please enter a response.");
+        // Route logic based on the task type
+        if (type === 'writing') {
+            text1 = document.getElementById('writingScaffoldedText').value.trim();
+            text2 = document.getElementById('writingOpenEndedText').value.trim();
+            
+            if(!text1 && !text2) return alert("Please enter a response.");
+            
+            const scafPrompt = document.getElementById('scaffoldedPrompt').innerText;
+            const openPrompt = document.getElementById('openEndedPrompt').innerText;
+            combinedPrompt = `Scaffolded Task: ${scafPrompt} | Open-Ended: ${openPrompt}`;
+            submitBtnId = 'submitWritingBtn';
+            
+        } else if (type === 'reflection') {
+            text1 = document.getElementById('reflectionText').value.trim();
+            if(!text1) return alert("Please enter your reflection.");
+            
+            combinedPrompt = document.getElementById('reflectionPrompt').innerText;
+            submitBtnId = 'submitReflectionBtn';
+        }
+
+        document.getElementById('status').innerText = "AI is evaluating your submission...";
+        document.getElementById(submitBtnId).disabled = true;
+
+        // Build Payload
+        const payload = { 
+            studentId, 
+            lessonId, 
+            prompt: combinedPrompt, 
+            text: text1, 
+            taskType: type, 
+            type: "assessment" 
+        };
         
-        document.getElementById('status').innerText = "AI is evaluating your writing...";
-        document.getElementById('submitWritingBtn').disabled = true;
+        // Attach second text only if it's the writing task
+        if (type === 'writing') {
+            payload.text2 = text2; 
+        }
 
-        const response = await fetch(SCRIPT_URL, {
-            method: "POST",
-            body: JSON.stringify({ 
-                studentId, 
-                lessonId, 
-                prompt: document.getElementById('writingPrompt').innerText, 
-                text: text1, 
-                text2: text2, // Sends Open-Ended challenge
-                taskType: "writing", 
-                type: "assessment" 
-            })
-        });
-        const result = await response.json();
-        showFeedback(result);
+        try {
+            const response = await fetch(SCRIPT_URL, {
+                method: "POST",
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            showFeedback(result);
+        } catch(e) {
+            console.error(e);
+            document.getElementById('status').innerText = "Error submitting task.";
+            document.getElementById(submitBtnId).disabled = false;
+        }
     }
 
     function showFeedback(result) {
@@ -466,7 +533,7 @@
     }
 
     // ==========================================
-    // AUDIO / VOICE RECORDING FIX
+    // AUDIO / VOICE RECORDING
     // ==========================================
     async function toggleRecording() {
         if (!isRecording) {
