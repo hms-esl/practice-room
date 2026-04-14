@@ -34,7 +34,8 @@
         .ai-feedback { margin-top: 10px; padding: 12px; border-radius: 4px; font-size: 0.9rem; display: none; }
         
         /* Writing Styles */
-        textarea { width: 100%; height: 150px; border-radius: 10px; border: 1px solid #ddd; padding: 10px; font-family: inherit; resize: vertical; margin-bottom: 10px; }
+        textarea { width: 100%; height: 120px; border-radius: 10px; border: 1px solid #ddd; padding: 10px; font-family: inherit; resize: vertical; margin-bottom: 10px; }
+        .writing-label { display: block; text-align: left; font-weight: 600; margin-bottom: 5px; color: #444;}
     </style>
 </head>
 <body>
@@ -64,8 +65,14 @@
         </div>
 
         <div id="writingUI" style="display: none;">
-            <p id="writingPrompt" style="font-style: italic; color: #555;"></p>
-            <textarea id="writingInput" placeholder="Type your answer here..."></textarea>
+            <p id="writingPrompt" style="font-style: italic; color: #555; margin-bottom: 15px;"></p>
+            
+            <label class="writing-label">1. Scaffolded Task</label>
+            <textarea id="writingScaffoldedText" placeholder="Write your scaffolded response here..."></textarea>
+            
+            <label class="writing-label">2. Open-Ended Challenge</label>
+            <textarea id="writingOpenEndedText" placeholder="Write your extended response here..."></textarea>
+            
             <button id="submitWritingBtn" class="btn btn-writing" onclick="submitTextTask('writing')">Submit Writing</button>
         </div>
 
@@ -83,7 +90,9 @@
 </div>
 
 <script>
+    // CRITICAL: Replace this string with your actual Google Script Web App URL
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyvucmpyniDeXtsY8fSIBVU57o0qfXtyIEXEoM0Pf2-sb3JbfnRQtY5ax1tj0C8fCJ9zw/exec"; 
+    
     const urlParams = new URLSearchParams(window.location.search);
     const lessonId = urlParams.get('lessonId');
     const studentId = urlParams.get('studentId');
@@ -93,9 +102,14 @@
 
     let currentPrompt = "";
     let audioScript = "";
+    let quizQuestions = [];
+    
+    // Audio/Voice variables
     let isRecording = false;
     let recognition;
-    let quizQuestions = [];
+    let mediaRecorder;
+    let audioChunks = [];
+    let finalTranscript = "";
     
     // Two-Attempt Tracker
     let attemptCount = 1;
@@ -106,17 +120,14 @@
             const response = await fetch(`${SCRIPT_URL}?lessonId=${lessonId}`);
             const data = await response.json();
             
-            // Clip reading text to hide the task headers from the main text view
             const readingMatch = data.fullLesson.split(/🎧\s*LISTENING TASK|LISTENING TASK/i);
             const readingMaterialOnly = readingMatch[0].trim();
             document.getElementById('lessonContent').innerText = readingMaterialOnly;
 
-            // ELPA21 Guardrail: Only show read aloud for non-comprehension tasks
             if (taskType !== 'comprehension') {
                 document.getElementById('readLessonBtn').style.display = "block";
             }
 
-            // Route UI
             if (taskType === 'comprehension') {
                 showUI('comprehensionUI', '🧠 Comprehension Task');
                 const compRegex = /COMPREHENSION TASK([\s\S]*?)(?:📝\s*WRITING TASK|WRITING TASK|$)/i;
@@ -155,13 +166,12 @@
 
     function parseWriting(text) {
         const parts = text.split(/📝\s*WRITING TASK|WRITING TASK/i);
-        const prompt = parts[1] || "Write 3-5 sentences about the lesson.";
+        const prompt = parts[1] || "Write your responses based on the lesson.";
         document.getElementById('writingPrompt').innerText = prompt.trim();
     }
 
     function parseListening(text) {
         audioScript = text.match(/<AUDIO_SCRIPT>([\s\S]*?)<\/AUDIO_SCRIPT>/i)?.[1] || "";
-        // FIXED: Regex now accounts for all tasks so Listening never accidentally grabs Comprehension
         const quizAreaMatch = text.match(/LISTENING TASK([\s\S]*?)(?:🗣️\s*SPEAKING TASK|SPEAKING TASK|❓\s*COMPREHENSION TASK|COMPREHENSION TASK|📝\s*WRITING TASK|WRITING TASK|$)/i);
         let quizArea = quizAreaMatch ? quizAreaMatch[1] : "";
         quizArea = quizArea.replace(/<AUDIO_SCRIPT>[\s\S]*?<\/AUDIO_SCRIPT>/i, "");
@@ -226,15 +236,14 @@
             let correctAnswer = null;
             let feedbackText = "Feedback was not provided.";
             
-            // FIXED: Catches "Answer: A", "Correct Answer: A", "Answers : A", etc.
-            const ansRegex = /(?:Correct\s*)?Answers?.*?(?:[A-E]\)|\b[A-E]\b)/i;
+            // IMPROVED REGEX: Hunts down just the letter associated with the answer
+            const ansRegex = /Answer.*?(?:([A-E])\)|([A-E])\b)/i;
             const ansMatch = answerAndFeedback.match(ansRegex);
             if (ansMatch) {
-                const letterMatch = ansMatch[0].match(/[A-E]/i);
-                if (letterMatch) correctAnswer = letterMatch[0].toUpperCase();
+                correctAnswer = (ansMatch[1] || ansMatch[2]).toUpperCase();
             }
 
-            // FIXED: Catches "Feedback:" or "Explanation:"
+            // EXTRACT FEEDBACK
             const fbRegex = /(?:Feedback|Explanation):\s*([\s\S]*)/i;
             const fbMatch = answerAndFeedback.match(fbRegex);
             if (fbMatch) feedbackText = fbMatch[1].trim();
@@ -293,7 +302,6 @@
         let studentAnswersRecord = `Attempt ${attemptCount}: `;
         let allCorrect = true;
         
-        // Check answers locally
         for (let i = 0; i < quizQuestions.length; i++) {
             const q = quizQuestions[i];
             studentAnswersRecord += `Q${i+1}: ${q.selectedLetter}. `;
@@ -304,12 +312,11 @@
             }
         }
 
-        // --- ATTEMPT 1 LOGIC (If they made mistakes) ---
+        // Attempt 1 Logic
         if (attemptCount === 1 && !allCorrect) {
             attemptsData.attempt1 = studentAnswersRecord;
             document.getElementById('status').innerText = "Generating AI hints for your missed questions... ⏳";
             
-            // Bundle ALL wrong questions into ONE API request to stop Quota Crashes
             let wrongQuestionsSummary = "";
             for (let i = 0; i < quizQuestions.length; i++) {
                 const q = quizQuestions[i];
@@ -321,8 +328,6 @@
             }
 
             let hintText = "Revisit the material and try again!";
-            
-            // FIXED: Dynamically tell the AI which text to look at!
             let hintContextName = taskType === 'comprehension' ? "reading text" : "audio script";
 
             try {
@@ -345,7 +350,6 @@
                 }
             } catch(e) { console.error(e); }
             
-            // Show Feedback Under Questions
             for (let i = 0; i < quizQuestions.length; i++) {
                 const q = quizQuestions[i];
                 const fbBox = document.getElementById(`qFeedback_${i}`);
@@ -362,7 +366,6 @@
                 }
             }
             
-            // Show the bundled AI Hints in the main feedback box at the bottom
             document.getElementById('feedback-box').style.display = "block";
             document.getElementById('feedback-box').style.borderLeftColor = "var(--writing)";
             document.getElementById('feedback-box').style.backgroundColor = "#fff3cd";
@@ -376,14 +379,13 @@
             return;
         }
 
-        // --- FINAL SUBMISSION (Attempt 2, or Perfect Attempt 1) ---
+        // Final Submission (Attempt 2, or Perfect Attempt 1)
         if (attemptCount === 1) {
             attemptsData.attempt1 = studentAnswersRecord;
         } else {
             attemptsData.attempt2 = studentAnswersRecord;
         }
 
-        // Display Full AI Feedback & Correct Answers
         for (let i = 0; i < quizQuestions.length; i++) {
             const q = quizQuestions[i];
             const fbBox = document.getElementById(`qFeedback_${i}`);
@@ -394,7 +396,6 @@
                 fbBox.style.backgroundColor = "#e8f5e9";
                 fbBox.innerHTML = `<strong>✅ Correct!</strong> ${q.feedback}`;
             } else {
-                // FIXED: Break the circular loop! This guarantees Attempt 2 updates, even if the correct letter parse failed.
                 fbBox.style.borderLeftColor = "var(--error)";
                 fbBox.style.backgroundColor = "#ffebee";
                 const displayCorrect = q.correctLetter ? `The correct answer was <strong>${q.correctLetter}</strong>.` : `<em>(Correct answer key could not be loaded)</em>.`;
@@ -405,12 +406,10 @@
         const finalScoreText = `${currentScore} out of ${quizQuestions.length}`;
         document.getElementById('status').innerText = `Done! Final Score: ${finalScoreText}`;
         
-        // Reset Feedback Box styling and show final score
         document.getElementById('feedback-box').style.borderLeftColor = "var(--primary)";
         document.getElementById('feedback-box').style.backgroundColor = "#eef7ff";
         showFeedback({score: finalScoreText, reply: "Scores have been recorded. Check individual questions for correct answers and feedback!"});
 
-        // Fast-Lane: Send combined attempts to the spreadsheet instantly
         let combinedTextForSheet = attemptsData.attempt1;
         if (attemptsData.attempt2) combinedTextForSheet += " | " + attemptsData.attempt2;
 
@@ -433,15 +432,27 @@
         document.querySelectorAll('input[type="radio"]').forEach(r => r.disabled = true);
     }
 
-    // --- TEXT / AUDIO SUBMISSIONS ---
+    // --- DUAL-TEXT WRITING SUBMISSIONS ---
     async function submitTextTask(type) {
-        const text = type === 'writing' ? document.getElementById('writingInput').value : "";
-        if(!text) return alert("Please enter some text.");
+        const text1 = document.getElementById('writingScaffoldedText').value.trim();
+        const text2 = document.getElementById('writingOpenEndedText').value.trim();
+
+        if(!text1 && !text2) return alert("Please enter a response.");
         
-        document.getElementById('status').innerText = "AI is evaluating...";
+        document.getElementById('status').innerText = "AI is evaluating your writing...";
+        document.getElementById('submitWritingBtn').disabled = true;
+
         const response = await fetch(SCRIPT_URL, {
             method: "POST",
-            body: JSON.stringify({ studentId, lessonId, prompt: document.getElementById('writingPrompt').innerText, text, taskType: "writing", type: "assessment" })
+            body: JSON.stringify({ 
+                studentId, 
+                lessonId, 
+                prompt: document.getElementById('writingPrompt').innerText, 
+                text: text1, 
+                text2: text2, // Sends Open-Ended challenge
+                taskType: "writing", 
+                type: "assessment" 
+            })
         });
         const result = await response.json();
         showFeedback(result);
@@ -454,28 +465,89 @@
         document.getElementById('status').innerText = "Task Complete!";
     }
 
-    // --- VOICE LOGIC ---
-    function toggleRecording() {
+    // ==========================================
+    // AUDIO / VOICE RECORDING FIX
+    // ==========================================
+    async function toggleRecording() {
         if (!isRecording) {
-            recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-            recognition.onresult = (event) => submitAudioTask(event.results[0][0].transcript);
-            recognition.start();
-            document.getElementById('recordBtn').classList.add('recording');
-            isRecording = true;
+            try {
+                // 1. Ask for Mic Permission & Setup Audio Recorder
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                finalTranscript = "";
+
+                // 2. Setup Speech-to-Text (Transcript)
+                recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.interimResults = false;
+                recognition.continuous = true; 
+                
+                recognition.onresult = (event) => {
+                    for(let i = event.resultIndex; i < event.results.length; i++){
+                        finalTranscript += event.results[i][0].transcript + " ";
+                    }
+                };
+
+                // 3. Collect Audio Data
+                mediaRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) audioChunks.push(e.data);
+                };
+
+                // 4. On Stop: Package Audio and Transcript to Backend
+                mediaRecorder.onstop = async () => {
+                    document.getElementById('status').innerText = "Packaging audio file...";
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    
+                    // Convert Blob to Base64
+                    const reader = new FileReader();
+                    reader.readAsDataURL(audioBlob);
+                    reader.onloadend = () => {
+                        const base64data = reader.result.split(',')[1];
+                        submitAudioTask(finalTranscript.trim(), base64data, 'audio/webm');
+                    };
+                };
+
+                // Start recording
+                mediaRecorder.start();
+                recognition.start();
+                
+                document.getElementById('recordBtn').classList.add('recording');
+                document.getElementById('recordBtn').innerText = "⏹ Stop Recording";
+                document.getElementById('status').innerText = "Recording... Speak clearly.";
+                isRecording = true;
+
+            } catch (err) {
+                alert("Microphone access denied. Please allow microphone permissions in your browser.");
+                console.error(err);
+            }
         } else {
+            // Stop recording
+            mediaRecorder.stop();
             recognition.stop();
+            document.getElementById('recordBtn').classList.remove('recording');
+            document.getElementById('recordBtn').innerText = "🎤 Start Recording";
             isRecording = false;
         }
     }
 
-    async function submitAudioTask(transcript) {
-        document.getElementById('status').innerText = "Analyzing speech...";
+    async function submitAudioTask(transcript, audioBase64, mimeType) {
+        document.getElementById('status').innerText = "AI is analyzing your speech & uploading file...";
+        document.getElementById('recordBtn').disabled = true;
+
         const response = await fetch(SCRIPT_URL, {
             method: "POST",
-            body: JSON.stringify({ studentId, lessonId, prompt: currentPrompt, text: transcript, taskType: "speaking", type: "assessment" })
+            body: JSON.stringify({ 
+                studentId, 
+                lessonId, 
+                prompt: currentPrompt, 
+                text: transcript || "No speech detected by browser.", 
+                audioBase64: audioBase64,  // Sends the physical file to Drive
+                mimeType: mimeType,
+                taskType: "speaking", 
+                type: "assessment" 
+            })
         });
         showFeedback(await response.json());
-        document.getElementById('recordBtn').classList.remove('recording');
     }
 
     window.onload = loadData;
