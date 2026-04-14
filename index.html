@@ -113,6 +113,7 @@
     const urlParams = new URLSearchParams(window.location.search);
     const lessonId = urlParams.get('lessonId');
     const studentId = urlParams.get('studentId');
+    const targetTopic = urlParams.get('targetTopic') || ""; // <--- NEW: Grabs targetTopic from URL
     
     const rawTaskType = urlParams.get('taskType') || 'speaking';
     const taskType = rawTaskType.trim().toLowerCase();
@@ -368,6 +369,7 @@
                     body: JSON.stringify({
                         studentId: studentId,
                         lessonId: lessonId,
+                        targetTopic: targetTopic, // <--- INJECTED HERE
                         taskType: "hint", 
                         prompt: `I missed the following questions. Look at the ${hintContextName} from the lesson and give me a brief, 1-sentence hint for EACH question to guide my thinking without giving away the direct answer.`,
                         text: wrongQuestionsSummary, 
@@ -450,6 +452,7 @@
                 body: JSON.stringify({
                     studentId: studentId,
                     lessonId: lessonId,
+                    targetTopic: targetTopic, // <--- INJECTED HERE
                     taskType: taskType, 
                     prompt: "Multiple Choice Questions",
                     text: combinedTextForSheet, 
@@ -495,6 +498,7 @@
         const payload = { 
             studentId, 
             lessonId, 
+            targetTopic, // <--- INJECTED HERE
             prompt: combinedPrompt, 
             text: text1, 
             taskType: type, 
@@ -593,6 +597,7 @@
             body: JSON.stringify({ 
                 studentId, 
                 lessonId, 
+                targetTopic, // <--- INJECTED HERE
                 prompt: currentPrompt, 
                 text: transcript || "No speech detected by browser.", 
                 audioBase64: audioBase64, 
