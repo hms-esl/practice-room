@@ -79,7 +79,8 @@
 </div>
 
 <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzz6_u7u2h4jTclXw7nO7wQZtFh1K7mO_329E4v0R4eC-6tOq3d5Y9B9_hH_H1XJt_n/exec";
+    // HARDCODED TO YOUR NEWEST DEPLOYMENT URL
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyvucmpyniDeXtsY8fSIBVU57o0qfXtyIEXEoM0Pf2-sb3JbfnRQtY5ax1tj0C8fCJ9zw/exec";
     
     const urlParams = new URLSearchParams(window.location.search);
     const studentId = urlParams.get('studentId') || "UnknownStudent";
@@ -99,21 +100,25 @@
     async function loadData() {
         document.getElementById('status').innerText = "Connecting to database...";
         try {
-            const response = await fetch(`${SCRIPT_URL}?lessonId=${lessonId}`);
+            // Added URL encoding just in case lesson IDs have spaces
+            const fetchUrl = `${SCRIPT_URL}?lessonId=${encodeURIComponent(lessonId)}`;
+            const response = await fetch(fetchUrl, { redirect: "follow" });
             
-            // DIAGNOSTIC CHECK: Read as plain text first to catch HTML errors
             const textResponse = await response.text();
             let data;
             try {
                 data = JSON.parse(textResponse);
             } catch (jsonErr) {
                 console.error("SERVER RETURNED ERROR PAGE, NOT JSON. DATA WAS:", textResponse.substring(0, 300));
-                document.getElementById('status').innerText = "⚠️ Connection Error: Google Script is blocking access. Check deployment permissions.";
+                document.getElementById('status').innerText = "⚠️ Connection Error: Google Script returned HTML instead of data.";
                 document.getElementById('status').style.color = "red";
-                throw new Error("Invalid connection response.");
+                throw new Error("Invalid connection response from Google.");
             }
             
-            if (data.fullLesson) {
+            if (data.error) {
+                 console.warn("Database says:", data.error);
+                 currentPrompt = "Lesson data not found yet. Please wait a moment or try recreating the lesson.";
+            } else if (data.fullLesson) {
                 const lessonText = data.fullLesson;
                 
                 if (lessonText.includes("🎯 TITLE:")) {
@@ -140,16 +145,18 @@
                 } else if (taskTypeParam === "vocab") {
                     currentPrompt = "Complete the Frayer Model fields below for your vocabulary word.";
                 }
-            } else {
-                console.warn("No lesson text found in database.");
             }
         } catch (e) {
             console.error("Error loading task:", e);
-            currentPrompt = "Could not load specific prompt. Please share your thoughts on the lesson.";
+            // VISUAL DIAGNOSTIC ERROR TO SCREEN
+            currentPrompt = `⚠️ SYSTEM CRASH: ${e.message}. \n\n(If you see 'Failed to fetch', GitHub hasn't updated its cache to the new URL yet. Wait 3 minutes and refresh).`;
+            document.getElementById('status').innerText = "Network blocked.";
+            document.getElementById('status').style.color = "red";
         }
         
         document.getElementById('taskHeader').innerText = taskTypeParam.charAt(0).toUpperCase() + taskTypeParam.slice(1) + " Task";
         document.getElementById('promptDisplay').innerText = currentPrompt;
+        
         if (document.getElementById('status').innerText === "Connecting to database...") {
             document.getElementById('status').innerText = "";
         }
