@@ -96,11 +96,13 @@
                     targetTopic = lessonText.split("🎯 TITLE: ")[1].split("\n")[0].trim();
                 }
                 
-                // Extract prompt based on taskType
+                // ==========================================
+                // UPDATED: Extract prompt based on taskType
+                // ==========================================
                 if (taskTypeParam === "writing" && lessonText.includes("📝 WRITING TASK")) {
-                    currentPrompt = lessonText.split("📝 WRITING TASK")[1].split("🤔")[0].trim();
+                    currentPrompt = lessonText.split("📝 WRITING TASK")[1].split("🤔 REFLECTION TASK")[0].trim();
                 } else if (taskTypeParam === "speaking" && lessonText.includes("🗣️ SPEAKING TASK")) {
-                    currentPrompt = lessonText.split("🗣️ SPEAKING TASK")[1].split("❓")[0].trim();
+                    currentPrompt = lessonText.split("🗣️ SPEAKING TASK")[1].split("📝 WRITING TASK")[0].trim();
                 } else if (taskTypeParam === "reflection" && lessonText.includes("🤔 REFLECTION TASK")) {
                     currentPrompt = lessonText.split("🤔 REFLECTION TASK")[1].trim();
                 }
