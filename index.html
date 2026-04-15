@@ -88,6 +88,7 @@
     const studentId = urlParams.get('studentId') || "UnknownStudent";
     const lessonId = urlParams.get('lessonId') || "UnknownLesson";
     const taskTypeParam = (urlParams.get('taskType') || "speaking").toLowerCase();
+    
     const currentVocabId = urlParams.get('vocabId') || ""; 
     
     let currentPrompt = "Tell me about what you learned today.";
@@ -108,38 +109,23 @@
             if (data.fullLesson) {
                 const lessonText = data.fullLesson;
                 
-                // 1. Safe Title Extraction
-                if (lessonText.includes("🎯 TITLE:")) {
-                    targetTopic = lessonText.split("🎯 TITLE:")[1].split("\n")[0].trim();
+                if (lessonText.includes("🎯 TITLE: ")) {
+                    targetTopic = lessonText.split("🎯 TITLE: ")[1].split("\n")[0].trim();
                 }
                 
-                // 2. Bulletproof Section Extractor
-                const getSection = (startText, endText) => {
-                    if (!lessonText.includes(startText)) return null;
-                    let chunk = lessonText.substring(lessonText.indexOf(startText) + startText.length);
-                    if (endText && chunk.includes(endText)) {
-                        chunk = chunk.substring(0, chunk.indexOf(endText));
-                    }
-                    return chunk.trim();
-                };
-
-                // 3. Assign Prompts Safely
-                if (taskTypeParam === "writing") {
-                    currentPrompt = getSection("📝 WRITING TASK", "🤔 REFLECTION TASK") || "Please write about what you learned in this lesson.";
-                } else if (taskTypeParam === "speaking") {
-                    currentPrompt = getSection("🗣️ SPEAKING TASK", "📝 WRITING TASK") || "Please summarize the lesson out loud.";
-                } else if (taskTypeParam === "reflection") {
-                    let ref = getSection("🤔 REFLECTION TASK", "ELPA21"); 
-                    if (!ref) ref = getSection("🤔 REFLECTION TASK", null);
-                    currentPrompt = ref || "What did you think of this lesson? Explain your thoughts.";
+                // CORRECTED EXTRACTION BOUNDARIES FOR NEW LESSON FORMAT
+                if (taskTypeParam === "writing" && lessonText.includes("📝 WRITING TASK")) {
+                    currentPrompt = lessonText.split("📝 WRITING TASK")[1].split("🤔")[0].trim();
+                } else if (taskTypeParam === "speaking" && lessonText.includes("🗣️ SPEAKING TASK")) {
+                    currentPrompt = lessonText.split("🗣️ SPEAKING TASK")[1].split("📝")[0].trim();
+                } else if (taskTypeParam === "reflection" && lessonText.includes("🤔 REFLECTION TASK")) {
+                    currentPrompt = lessonText.split("🤔 REFLECTION TASK")[1].trim();
                 } else if (taskTypeParam === "vocab") {
                     currentPrompt = "Complete the Frayer Model fields below for your vocabulary word.";
                 }
-            } else {
-                console.warn("No lesson text found in database for this ID.");
             }
         } catch (e) {
-            console.error("Error loading task:", e);
+            console.error(e);
             currentPrompt = "Could not load specific prompt. Please share your thoughts on the lesson.";
         }
         
@@ -147,7 +133,6 @@
         document.getElementById('promptDisplay').innerText = currentPrompt;
         document.getElementById('status').innerText = "";
 
-        // UI handling
         if (taskTypeParam === "writing" || taskTypeParam === "reflection") {
             document.getElementById('writingUI').style.display = "block";
         } else if (taskTypeParam === "vocab") {
@@ -160,6 +145,7 @@
     async function submitWriting() {
         const text1 = document.getElementById('textResponse').value;
         const text2 = document.getElementById('textResponse2') ? document.getElementById('textResponse2').value : "";
+        
         if (!text1) { alert("Please type something before submitting."); return; }
         
         document.getElementById('submitWritingBtn').disabled = true;
@@ -170,33 +156,43 @@
             text: text1, text2: text2, taskType: taskTypeParam, type: "assessment"
         };
         
-        try {
-            const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
-            showFeedback(await response.json());
-        } catch(e) {
-            document.getElementById('status').innerText = "Error submitting. Please try again.";
-            console.error(e);
-        }
+        const response = await fetch(SCRIPT_URL, {
+            method: "POST",
+            body: JSON.stringify(payload)
+        });
+        
+        showFeedback(await response.json());
     }
 
     async function submitVocab() {
         const def = document.getElementById('defInput').value;
         const sent = document.getElementById('sentInput').value;
-        if (!def || !sent) { alert("Please fill out at least your personal definition and sentence."); return; }
+        
+        if (!def || !sent) { 
+            alert("Please fill out at least your personal definition and sentence."); 
+            return; 
+        }
         
         document.getElementById('submitVocabBtn').disabled = true;
         document.getElementById('status').innerText = "Submitting Vocabulary to AI Tutor...";
         
         const payload = {
-            studentId, lessonId, vocabId: currentVocabId, taskType: "vocab",
-            personalDef: def, personalSent: sent,
+            studentId: studentId,
+            lessonId: lessonId,
+            vocabId: currentVocabId,
+            taskType: "vocab",       
+            personalDef: def,
+            personalSent: sent,
             example: document.getElementById('exampleInput').value,
             nonExample: document.getElementById('nonExampleInput').value,
-            type: "assessment"
+            type: "assessment"       
         };
         
         try {
-            const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+            const response = await fetch(SCRIPT_URL, {
+                method: "POST",
+                body: JSON.stringify(payload)
+            });
             showFeedback(await response.json());
         } catch(e) {
             document.getElementById('status').innerText = "Error submitting task.";
@@ -259,20 +255,16 @@
         document.getElementById('status').innerText = "AI is analyzing your speech & uploading file...";
         document.getElementById('recordBtn').disabled = true;
 
-        const payload = { 
-            studentId, lessonId, targetTopic, prompt: currentPrompt, 
-            text: transcript || "No speech detected.", 
-            audioBase64: audioBase64, mimeType: mimeType,
-            taskType: "speaking", type: "assessment" 
-        };
-
-        try {
-            const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
-            showFeedback(await response.json());
-        } catch(e) {
-            document.getElementById('status').innerText = "Error analyzing audio.";
-            console.error(e);
-        }
+        const response = await fetch(SCRIPT_URL, {
+            method: "POST",
+            body: JSON.stringify({ 
+                studentId, lessonId, targetTopic, prompt: currentPrompt, 
+                text: transcript || "No speech detected.", 
+                audioBase64: audioBase64, mimeType: mimeType,
+                taskType: "speaking", type: "assessment" 
+            })
+        });
+        showFeedback(await response.json());
     }
 
     function showFeedback(result) {
