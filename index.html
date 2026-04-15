@@ -9,7 +9,7 @@
         #app-container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 600px; width: 100%; }
         h2 { color: var(--secondary); margin-bottom: 20px; border-bottom: 2px solid #ECF0F1; padding-bottom: 10px; }
         .instruction { font-size: 1.1em; margin-bottom: 20px; line-height: 1.5; }
-        textarea { width: 100%; height: 120px; padding: 15px; border: 1px solid #BDC3C7; border-radius: 8px; font-size: 16px; margin-bottom: 20px; box-sizing: border-box; resize: vertical; }
+        textarea { width: 100%; height: 100px; padding: 15px; border: 1px solid #BDC3C7; border-radius: 8px; font-size: 16px; margin-bottom: 20px; box-sizing: border-box; resize: vertical; }
         textarea:focus { outline: none; border-color: var(--secondary); }
         button { background-color: var(--secondary); color: white; border: none; padding: 15px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; width: 100%; transition: background-color 0.3s; font-weight: bold; margin-bottom: 15px; }
         button:hover { background-color: #2980B9; }
@@ -35,11 +35,27 @@
         
         <p style="font-weight:bold; margin-bottom: 5px;">Open-Ended Challenge:</p>
         <textarea id="textResponse2" placeholder="Type your response here..."></textarea>
-        <button id="submitWritingBtn" onclick="submitWriting()">📤 Submit Writing Task</button>
+        <button id="submitWritingBtn" onclick="submitWriting()">📤 Submit Task</button>
     </div>
 
     <div id="speakingUI" style="display:none;">
         <button id="recordBtn" onclick="toggleRecording()">🎤 Start Recording</button>
+    </div>
+
+    <div id="vocabUI" style="display:none;">
+        <p style="font-weight:bold; margin-bottom: 5px;">Personal Definition:</p>
+        <textarea id="defInput" placeholder="Define the word in your own words..."></textarea>
+        
+        <p style="font-weight:bold; margin-bottom: 5px;">Personal Sentence:</p>
+        <textarea id="sentInput" placeholder="Use the word in a sentence..."></textarea>
+        
+        <p style="font-weight:bold; margin-bottom: 5px;">Example:</p>
+        <textarea id="exampleInput" placeholder="Give an example..."></textarea>
+        
+        <p style="font-weight:bold; margin-bottom: 5px;">Non-Example:</p>
+        <textarea id="nonExampleInput" placeholder="Give a non-example or opposite..."></textarea>
+
+        <button id="submitVocabBtn" onclick="submitVocab()">📤 Submit Vocab Task</button>
     </div>
 
     <div id="status"></div>
@@ -73,6 +89,9 @@
     const lessonId = urlParams.get('lessonId') || "UnknownLesson";
     const taskTypeParam = (urlParams.get('taskType') || "speaking").toLowerCase();
     
+    // NEW: Extract vocabId for Vocabulary tasks (e.g., Lsn_123_V0)
+    const currentVocabId = urlParams.get('vocabId') || ""; 
+    
     let currentPrompt = "Tell me about what you learned today.";
     let targetTopic = "";
     
@@ -91,20 +110,18 @@
             if (data.fullLesson) {
                 const lessonText = data.fullLesson;
                 
-                // Extract Target Topic from "🎯 TITLE: "
                 if (lessonText.includes("🎯 TITLE: ")) {
                     targetTopic = lessonText.split("🎯 TITLE: ")[1].split("\n")[0].trim();
                 }
                 
-                // ==========================================
-                // UPDATED: Extract prompt based on taskType
-                // ==========================================
                 if (taskTypeParam === "writing" && lessonText.includes("📝 WRITING TASK")) {
                     currentPrompt = lessonText.split("📝 WRITING TASK")[1].split("🤔 REFLECTION TASK")[0].trim();
                 } else if (taskTypeParam === "speaking" && lessonText.includes("🗣️ SPEAKING TASK")) {
                     currentPrompt = lessonText.split("🗣️ SPEAKING TASK")[1].split("📝 WRITING TASK")[0].trim();
                 } else if (taskTypeParam === "reflection" && lessonText.includes("🤔 REFLECTION TASK")) {
                     currentPrompt = lessonText.split("🤔 REFLECTION TASK")[1].trim();
+                } else if (taskTypeParam === "vocab") {
+                    currentPrompt = "Complete the Frayer Model fields below for your vocabulary word.";
                 }
             }
         } catch (e) {
@@ -116,8 +133,11 @@
         document.getElementById('promptDisplay').innerText = currentPrompt;
         document.getElementById('status').innerText = "";
 
+        // Display the correct UI block based on taskType
         if (taskTypeParam === "writing" || taskTypeParam === "reflection") {
             document.getElementById('writingUI').style.display = "block";
+        } else if (taskTypeParam === "vocab") {
+            document.getElementById('vocabUI').style.display = "block";
         } else {
             document.getElementById('speakingUI').style.display = "block";
         }
@@ -143,6 +163,45 @@
         });
         
         showFeedback(await response.json());
+    }
+
+    // ==========================================
+    // NEW: VOCABULARY SUBMISSION FUNCTION
+    // ==========================================
+    async function submitVocab() {
+        const def = document.getElementById('defInput').value;
+        const sent = document.getElementById('sentInput').value;
+        
+        if (!def || !sent) { 
+            alert("Please fill out at least your personal definition and sentence."); 
+            return; 
+        }
+        
+        document.getElementById('submitVocabBtn').disabled = true;
+        document.getElementById('status').innerText = "Submitting Vocabulary to AI Tutor...";
+        
+        const payload = {
+            studentId: studentId,
+            lessonId: lessonId,
+            vocabId: currentVocabId, // Specific ID passed from AppSheet URL
+            taskType: "vocab",       // Triggers the vocab grading branch in App Script
+            personalDef: def,
+            personalSent: sent,
+            example: document.getElementById('exampleInput').value,
+            nonExample: document.getElementById('nonExampleInput').value,
+            type: "assessment"       // Keeps formatting consistent for your backend
+        };
+        
+        try {
+            const response = await fetch(SCRIPT_URL, {
+                method: "POST",
+                body: JSON.stringify(payload)
+            });
+            showFeedback(await response.json());
+        } catch(e) {
+            document.getElementById('status').innerText = "Error submitting task.";
+            console.error(e);
+        }
     }
 
     async function toggleRecording() {
@@ -224,7 +283,6 @@
             document.getElementById('varietyScore').innerText = result.variety;
         }
         
-        // Show Dynamic Rubric Image if the AI sent one!
         if (result.rubricUrl) {
             document.getElementById('dynamicRubric').src = result.rubricUrl;
             document.getElementById('rubric-display-container').style.display = "block";
