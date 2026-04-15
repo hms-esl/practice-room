@@ -1,538 +1,148 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ELL Interactive Lesson</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <title>Practice Room</title>
     <style>
-        :root { 
-            --primary: #4A90E2; 
-            --secondary: #50E3C2; 
-            --bg: #F4F7F9; 
-            --error: #FF4B2B; 
-            --success: #28a745; 
-            --writing: #f39c12; 
-            --listening: #9b59b6; 
-            --reflection: #e67e22; 
-        }
-        body { font-family: 'Poppins', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; min-height: 100vh; }
-        .container { width: 100%; max-width: 600px; }
-        
-        .card { background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; }
-        .lesson-card { text-align: left; }
-        .lesson-text { white-space: pre-wrap; font-size: 0.95rem; line-height: 1.6; color: #333; }
-        
-        .btn { border: none; padding: 12px 24px; border-radius: 50px; cursor: pointer; font-weight: 600; transition: 0.3s; margin: 10px 0; width: 100%; }
-        .btn-listen { background: var(--listening); color: white; }
-        .btn-record { background: var(--primary); color: white; }
-        .btn-writing { background: var(--writing); color: white; }
-        .btn-reflection { background: var(--reflection); color: white; } 
-        
-        .btn:disabled { background: #ccc; cursor: not-allowed; }
-        .recording { background: var(--error) !important; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-        
-        #status { margin-top: 15px; font-size: 0.9rem; color: #666; min-height: 40px; font-weight: bold;}
-        #feedback-box { margin-top: 20px; padding: 15px; border-radius: 10px; background: #eef7ff; display: none; text-align: left; }
-        
-        /* Quiz & UI Components */
-        .q-block { background: #fdfdfd; border: 1px solid #eee; border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: left; }
-        .q-text { font-weight: 600; margin-bottom: 10px; }
-        .q-option { display: block; margin-bottom: 8px; cursor: pointer; padding: 8px; border-radius: 8px; transition: 0.2s; border: 1px solid transparent;}
-        .q-option:hover { background: #f0f8ff; border: 1px solid var(--primary); }
-        .ai-feedback { margin-top: 10px; padding: 12px; border-radius: 4px; font-size: 0.9rem; display: none; }
-        
-        /* Writing Styles */
-        textarea { width: 100%; height: 120px; border-radius: 10px; border: 1px solid #ddd; padding: 10px; font-family: inherit; resize: vertical; margin-bottom: 10px; }
-        .writing-label { display: block; text-align: left; font-weight: 600; margin-bottom: 5px; color: #444;}
+        :root { --primary: #2C3E50; --secondary: #3498DB; --bg: #F5F7FA; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: var(--primary); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        #app-container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 600px; width: 100%; }
+        h2 { color: var(--secondary); margin-bottom: 20px; border-bottom: 2px solid #ECF0F1; padding-bottom: 10px; }
+        .instruction { font-size: 1.1em; margin-bottom: 20px; line-height: 1.5; }
+        textarea { width: 100%; height: 120px; padding: 15px; border: 1px solid #BDC3C7; border-radius: 8px; font-size: 16px; margin-bottom: 20px; box-sizing: border-box; resize: vertical; }
+        textarea:focus { outline: none; border-color: var(--secondary); }
+        button { background-color: var(--secondary); color: white; border: none; padding: 15px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; width: 100%; transition: background-color 0.3s; font-weight: bold; margin-bottom: 15px; }
+        button:hover { background-color: #2980B9; }
+        button:disabled { background-color: #95A5A6; cursor: not-allowed; }
+        .recording { background-color: #E74C3C !important; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+        #status { text-align: center; font-weight: bold; color: #7F8C8D; margin-top: 15px; min-height: 20px; }
+        #feedback-box { margin-top: 25px; padding: 20px; background-color: #E8F8F5; border-left: 5px solid #1ABC9C; border-radius: 4px; display: none; }
+        .rubric-scores { margin-top: 15px; display: flex; flex-direction: column; gap: 8px; font-size: 0.9rem; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #ddd; }
+        .score-row { display: flex; justify-content: space-between; }
+        .score-val { font-weight: bold; color: var(--primary); }
     </style>
 </head>
 <body>
 
-<div class="container">
-    
-    <div class="card lesson-card">
-        <button id="readLessonBtn" class="btn btn-listen" onclick="speakText(document.getElementById('lessonContent').innerText)" style="display:none; margin-bottom: 15px;">🔊 Read Lesson Aloud</button>
-        <h2 id="lessonTitle">📚 Today's Lesson</h2>
-        <div id="lessonContent" class="lesson-text">Loading...</div>
+<div id="app-container">
+    <h2 id="taskHeader">Loading Task...</h2>
+    <p class="instruction" id="promptDisplay">Please wait while we load your practice task.</p>
+
+    <div id="writingUI" style="display:none;">
+        <p style="font-weight:bold; margin-bottom: 5px;">Scaffolded Task:</p>
+        <textarea id="textResponse" placeholder="Type your response here..."></textarea>
+        
+        <p style="font-weight:bold; margin-bottom: 5px;">Open-Ended Challenge:</p>
+        <textarea id="textResponse2" placeholder="Type your response here..."></textarea>
+        <button id="submitWritingBtn" onclick="submitWriting()">📤 Submit Writing Task</button>
     </div>
 
-    <div class="card">
-        <h2 id="taskTitle">Task Loading...</h2>
+    <div id="speakingUI" style="display:none;">
+        <button id="recordBtn" onclick="toggleRecording()">🎤 Start Recording</button>
+    </div>
+
+    <div id="status"></div>
+
+    <div id="feedback-box">
+        <strong>Overall AI Score: <span id="scoreDisplay">-</span>/5</strong>
         
-        <div id="speakingUI" style="display: none;">
-            <p id="promptText" style="font-style: italic; color: #555;">Fetching prompt...</p>
-            <button class="btn btn-listen" onclick="speakText(currentPrompt)">🔊 Listen to Prompt</button>
-            <button id="recordBtn" class="btn btn-record" onclick="toggleRecording()">🎤 Start Recording</button>
+        <div id="rubric-breakdown" style="display: none;">
+            <div class="rubric-scores">
+                <div class="score-row"><span>📚 <strong>Vocabulary</strong></span> <span class="score-val"><span id="vocabScore">-</span>/5</span></div>
+                <div class="score-row"><span>🏗️ <strong>Syntax & Grammar</strong></span> <span class="score-val"><span id="syntaxScore">-</span>/5</span></div>
+                <div class="score-row"><span>🗂️ <strong>Organization</strong></span> <span class="score-val"><span id="orgScore">-</span>/5</span></div>
+                <div class="score-row"><span>🔄 <strong>Sentence Variety</strong></span> <span class="score-val"><span id="varietyScore">-</span>/5</span></div>
+            </div>
         </div>
+        
+        <p id="replyDisplay" style="margin-top: 15px; line-height: 1.6;"></p>
 
-        <div id="listeningUI" style="display: none;">
-            <button class="btn btn-listen" onclick="playAudioTask()">🔊 Play Audio Story</button>
-            <button class="btn btn-listen" onclick="readAllQuestions()">🔊 Read Questions & Options</button>
-            <div id="listeningQuizContainer" style="margin-top: 15px;"></div>
-            <button id="submitListenBtn" class="btn btn-record" onclick="submitAutoQuiz()" style="display:none;">Submit Answers</button>
-        </div>
-
-        <div id="writingUI" style="display: none;">
-            <label class="writing-label">1. Scaffolded Task</label>
-            <p id="scaffoldedPrompt" style="font-style: italic; color: #555; margin-bottom: 10px;"></p>
-            <textarea id="writingScaffoldedText" placeholder="Write your scaffolded response here..."></textarea>
-            
-            <label class="writing-label" style="margin-top: 15px;">2. Open-Ended Challenge</label>
-            <p id="openEndedPrompt" style="font-style: italic; color: #555; margin-bottom: 10px;"></p>
-            <textarea id="writingOpenEndedText" placeholder="Write your extended response here..."></textarea>
-            
-            <button id="submitWritingBtn" class="btn btn-writing" onclick="submitTextTask('writing')">Submit Writing</button>
-        </div>
-
-        <div id="reflectionUI" style="display: none;">
-            <p style="font-weight: 600; color: #333; margin-bottom: 5px; text-align: left;">Think about what you have learned in this unit and respond to the prompt.</p>
-            <p id="reflectionPrompt" style="font-style: italic; color: #555; margin-bottom: 15px; padding-left: 10px; border-left: 3px solid var(--reflection); text-align: left;"></p>
-            <textarea id="reflectionText" placeholder="Write your thoughts and reflections here..."></textarea>
-            <button id="submitReflectionBtn" class="btn btn-reflection" onclick="submitTextTask('reflection')">Submit Reflection</button>
-        </div>
-
-        <div id="comprehensionUI" style="display: none;">
-            <div id="quizContainer"></div>
-            <button id="submitQuizBtn" class="btn btn-record" onclick="submitAutoQuiz()" style="display:none;">Submit Quiz</button>
-        </div>
-
-        <div id="status">Ready!</div>
-        <div id="feedback-box">
-            <strong>AI Feedback: <span id="scoreDisplay">-</span></strong>
-            <p id="replyDisplay"></p>
+        <div id="rubric-display-container" style="display:none; margin-top:20px; text-align: center;">
+            <p style="font-size:0.85rem; color:#666; margin-bottom: 5px;"><strong>Your Grading Rubric:</strong></p>
+            <img id="dynamicRubric" src="" alt="ELPA21 Grading Rubric" style="max-width:100%; border:1px solid #ccc; border-radius:5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
         </div>
     </div>
 </div>
 
 <script>
-    // CRITICAL: Replace this string with your actual Google Script Web App URL
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyvucmpyniDeXtsY8fSIBVU57o0qfXtyIEXEoM0Pf2-sb3JbfnRQtY5ax1tj0C8fCJ9zw/exec"; 
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzz6_u7u2h4jTclXw7nO7wQZtFh1K7mO_329E4v0R4eC-6tOq3d5Y9B9_hH_H1XJt_n/exec";
     
     const urlParams = new URLSearchParams(window.location.search);
-    const lessonId = urlParams.get('lessonId');
-    const studentId = urlParams.get('studentId');
-    const targetTopic = urlParams.get('targetTopic') || ""; // <--- NEW: Grabs targetTopic from URL
+    const studentId = urlParams.get('studentId') || "UnknownStudent";
+    const lessonId = urlParams.get('lessonId') || "UnknownLesson";
+    const taskTypeParam = (urlParams.get('taskType') || "speaking").toLowerCase();
     
-    const rawTaskType = urlParams.get('taskType') || 'speaking';
-    const taskType = rawTaskType.trim().toLowerCase();
-
-    let currentPrompt = "";
-    let audioScript = "";
-    let quizQuestions = [];
+    let currentPrompt = "Tell me about what you learned today.";
+    let targetTopic = "";
     
-    // Audio/Voice variables
     let isRecording = false;
-    let recognition;
     let mediaRecorder;
     let audioChunks = [];
+    let recognition;
     let finalTranscript = "";
-    
-    // Two-Attempt Tracker
-    let attemptCount = 1;
-    let attemptsData = { attempt1: "", attempt2: "" };
 
     async function loadData() {
+        document.getElementById('status').innerText = "Loading specific task details...";
         try {
             const response = await fetch(`${SCRIPT_URL}?lessonId=${lessonId}`);
             const data = await response.json();
             
-            const readingMatch = data.fullLesson.split(/🎧\s*LISTENING TASK|LISTENING TASK/i);
-            const readingMaterialOnly = readingMatch[0].trim();
-            document.getElementById('lessonContent').innerText = readingMaterialOnly;
-
-            if (taskType !== 'comprehension') {
-                document.getElementById('readLessonBtn').style.display = "block";
+            if (data.fullLesson) {
+                const lessonText = data.fullLesson;
+                
+                // Extract Target Topic from "🎯 TITLE: "
+                if (lessonText.includes("🎯 TITLE: ")) {
+                    targetTopic = lessonText.split("🎯 TITLE: ")[1].split("\n")[0].trim();
+                }
+                
+                // Extract prompt based on taskType
+                if (taskTypeParam === "writing" && lessonText.includes("📝 WRITING TASK")) {
+                    currentPrompt = lessonText.split("📝 WRITING TASK")[1].split("🤔")[0].trim();
+                } else if (taskTypeParam === "speaking" && lessonText.includes("🗣️ SPEAKING TASK")) {
+                    currentPrompt = lessonText.split("🗣️ SPEAKING TASK")[1].split("❓")[0].trim();
+                } else if (taskTypeParam === "reflection" && lessonText.includes("🤔 REFLECTION TASK")) {
+                    currentPrompt = lessonText.split("🤔 REFLECTION TASK")[1].trim();
+                }
             }
-
-            if (taskType === 'comprehension') {
-                showUI('comprehensionUI', '🧠 Comprehension Task');
-                const compRegex = /COMPREHENSION TASK([\s\S]*?)(?:📝\s*WRITING TASK|WRITING TASK|$)/i;
-                const match = data.fullLesson.match(compRegex);
-                const isolatedComp = match ? match[1] : "";
-                buildUniversalQuiz(isolatedComp, 'quizContainer', 'submitQuizBtn');
-                
-            } else if (taskType === 'listening') {
-                showUI('listeningUI', '🎧 Listening Task');
-                parseListening(data.fullLesson);
-                
-            } else if (taskType === 'writing') {
-                showUI('writingUI', '✍️ Writing Task');
-                parseWriting(data.fullLesson);
-                
-            } else if (taskType === 'reflection') {
-                showUI('reflectionUI', '🤔 Lesson Reflection');
-                parseReflection(data.fullLesson);
-
-            } else {
-                showUI('speakingUI', '🗣️ Speaking Task');
-                parseSpeaking(data.fullLesson);
-            }
-        } catch (e) { 
+        } catch (e) {
             console.error(e);
-            document.getElementById('status').innerText = "Error loading data."; 
+            currentPrompt = "Could not load specific prompt. Please share your thoughts on the lesson.";
         }
-    }
-
-    function showUI(id, title) {
-        document.getElementById(id).style.display = "block";
-        document.getElementById('taskTitle').innerText = title;
-    }
-
-    function parseSpeaking(text) {
-        const parts = text.split(/🗣️\s*SPEAKING TASK|SPEAKING TASK/i);
-        currentPrompt = parts[1] ? parts[1].split("❓")[0].trim() : "Explain what you learned today.";
-        document.getElementById('promptText').innerText = currentPrompt;
-    }
-
-    function parseWriting(text) {
-        const parts = text.split(/📝\s*WRITING TASK|WRITING TASK/i);
-        let fullPrompt = parts[1] ? parts[1].trim() : "Write your responses based on the lesson.";
         
-        const scaffoldedMatch = fullPrompt.match(/Scaffolded Task:?([\s\S]*?)(?:Open-Ended Challenge:?|$)/i);
-        const openEndedMatch = fullPrompt.match(/Open-Ended Challenge:?([\s\S]*)/i);
-        
-        let scaffoldedText = scaffoldedMatch ? scaffoldedMatch[1].trim() : fullPrompt;
-        let openEndedText = openEndedMatch ? openEndedMatch[1].trim() : "Write your extended response here.";
+        document.getElementById('taskHeader').innerText = taskTypeParam.charAt(0).toUpperCase() + taskTypeParam.slice(1) + " Task";
+        document.getElementById('promptDisplay').innerText = currentPrompt;
+        document.getElementById('status').innerText = "";
 
-        document.getElementById('scaffoldedPrompt').innerText = scaffoldedText;
-        document.getElementById('openEndedPrompt').innerText = openEndedText;
-    }
-
-    function parseReflection(text) {
-        const parts = text.split(/🤔\s*REFLECTION TASK|REFLECTION TASK/i);
-        const prompt = parts[1] ? parts[1].trim() : "What were your biggest takeaways from today's lesson? How might you use this in the real world?";
-        document.getElementById('reflectionPrompt').innerText = prompt;
-    }
-
-    function parseListening(text) {
-        audioScript = text.match(/<AUDIO_SCRIPT>([\s\S]*?)<\/AUDIO_SCRIPT>/i)?.[1] || "";
-        const quizAreaMatch = text.match(/LISTENING TASK([\s\S]*?)(?:🗣️\s*SPEAKING TASK|SPEAKING TASK|❓\s*COMPREHENSION TASK|COMPREHENSION TASK|📝\s*WRITING TASK|WRITING TASK|🤔\s*REFLECTION TASK|REFLECTION TASK|$)/i);
-        let quizArea = quizAreaMatch ? quizAreaMatch[1] : "";
-        quizArea = quizArea.replace(/<AUDIO_SCRIPT>[\s\S]*?<\/AUDIO_SCRIPT>/i, "");
-        buildUniversalQuiz(quizArea, 'listeningQuizContainer', 'submitListenBtn');
-    }
-
-    function speakText(val) {
-        window.speechSynthesis.cancel(); 
-        const msg = new SpeechSynthesisUtterance(val);
-        window.speechSynthesis.speak(msg);
-    }
-
-    function playAudioTask() { speakText(audioScript); }
-
-    function readAllQuestions() {
-        let textToRead = "";
-        quizQuestions.forEach((q, i) => {
-            textToRead += `Question ${i + 1}. ${q.question}. `;
-            q.options.forEach(opt => {
-                textToRead += `Option ${opt.letter}. ${opt.text}. `;
-            });
-        });
-        speakText(textToRead);
-    }
-
-    // ==========================================
-    // UNIFIED BUILDER: Auto-Extracts Questions & Keys
-    // ==========================================
-    function buildUniversalQuiz(rawText, containerId, btnId) {
-        const container = document.getElementById(containerId);
-        container.innerHTML = "";
-        quizQuestions = [];
-
-        let cleanText = rawText.replace(/<\/?QUESTION>/gi, "\n");
-        let blocks = cleanText.split(/\n\s*\d+\.\s+/).filter(b => b.trim().length > 10);
-        
-        if (blocks.length === 0) {
-            blocks = cleanText.split(/(?:^|\s)\d+\.\s+/).filter(b => b.trim().length > 10);
-        }
-
-        if (blocks.length === 0) {
-            container.innerHTML = "<p style='color:red;'>Oops! Could not parse the questions. Please check the AI lesson format.</p>";
-            return;
-        }
-
-        blocks.forEach((block, index) => {
-            const qSplit = block.split(/(?=\n?\s*A[\)\.])|(?=\s+A[\)\.])/i);
-            const questionText = qSplit[0].trim();
-            const restOfBlock = qSplit.slice(1).join(" ");
-
-            const feedbackSplit = restOfBlock.split(/Answers?:/i);
-            const optionsSection = feedbackSplit[0];
-            const answerAndFeedback = feedbackSplit[1] ? "Answers: " + feedbackSplit[1] : "";
-
-            const options = [];
-            const optionRegex = /([A-E][\)\.])\s*([\s\S]+?)(?=(?:\n?\s*[A-E][\)\.])|$)/g;
-            let match;
-            while ((match = optionRegex.exec(optionsSection)) !== null) {
-                options.push({ letter: match[1].charAt(0).toUpperCase(), text: match[2].trim() });
-            }
-
-            let correctAnswer = null;
-            let feedbackText = "Feedback was not provided.";
-            
-            const ansRegex = /Answer.*?(?:([A-E])\)|([A-E])\b)/i;
-            const ansMatch = answerAndFeedback.match(ansRegex);
-            if (ansMatch) {
-                correctAnswer = (ansMatch[1] || ansMatch[2]).toUpperCase();
-            }
-
-            const fbRegex = /(?:Feedback|Explanation):\s*([\s\S]*)/i;
-            const fbMatch = answerAndFeedback.match(fbRegex);
-            if (fbMatch) feedbackText = fbMatch[1].trim();
-
-            if (options.length > 0) {
-                quizQuestions.push({ 
-                    question: questionText, 
-                    options: options, 
-                    correctLetter: correctAnswer, 
-                    feedback: feedbackText, 
-                    selectedLetter: null 
-                });
-                
-                let qHTML = `<div class="q-block" id="qBlock_${index}">
-                    <div class="q-text">${index + 1}. ${questionText}</div>`;
-                
-                options.forEach((opt) => {
-                    qHTML += `<label class="q-option">
-                        <input type="radio" name="q_${index}" value="${opt.letter}" onchange="selectOption(${index}, '${opt.letter}')"> 
-                        ${opt.letter}) ${opt.text}
-                    </label>`;
-                });
-                
-                qHTML += `<div id="qFeedback_${index}" class="ai-feedback"></div></div>`;
-                container.innerHTML += qHTML;
-            }
-        });
-
-        if (quizQuestions.length > 0) {
-            document.getElementById(btnId).style.display = "block";
-        }
-    }
-
-    function selectOption(qIndex, letter) {
-        quizQuestions[qIndex].selectedLetter = letter;
-    }
-
-    // ==========================================
-    // BATCHED SUBMISSION: HINTS & TWO-ATTEMPT LOGIC
-    // ==========================================
-    async function submitAutoQuiz() {
-        document.getElementById('status').innerText = "Grading...";
-        const submitBtnId = taskType === 'comprehension' ? 'submitQuizBtn' : 'submitListenBtn';
-        document.getElementById(submitBtnId).disabled = true;
-        
-        for (let i = 0; i < quizQuestions.length; i++) {
-            if (!quizQuestions[i].selectedLetter) {
-                alert("Please answer all questions before submitting.");
-                document.getElementById('status').innerText = "Waiting for completion.";
-                document.getElementById(submitBtnId).disabled = false;
-                return;
-            }
-        }
-
-        let currentScore = 0;
-        let studentAnswersRecord = `Attempt ${attemptCount}: `;
-        let allCorrect = true;
-        
-        for (let i = 0; i < quizQuestions.length; i++) {
-            const q = quizQuestions[i];
-            studentAnswersRecord += `Q${i+1}: ${q.selectedLetter}. `;
-            if (q.correctLetter && q.selectedLetter === q.correctLetter) {
-                currentScore++;
-            } else {
-                allCorrect = false;
-            }
-        }
-
-        if (attemptCount === 1 && !allCorrect) {
-            attemptsData.attempt1 = studentAnswersRecord;
-            document.getElementById('status').innerText = "Generating AI hints for your missed questions... ⏳";
-            
-            let wrongQuestionsSummary = "";
-            for (let i = 0; i < quizQuestions.length; i++) {
-                const q = quizQuestions[i];
-                if (!(q.correctLetter && q.selectedLetter === q.correctLetter)) {
-                    const wrongOpt = q.options.find(o => o.letter === q.selectedLetter);
-                    const wrongText = wrongOpt ? wrongOpt.text : "No selection";
-                    wrongQuestionsSummary += `Question ${i+1}: ${q.question} | Student incorrectly guessed: ${wrongText}\n`;
-                }
-            }
-
-            let hintText = "Revisit the material and try again!";
-            let hintContextName = taskType === 'comprehension' ? "reading text" : "audio script";
-
-            try {
-                const hintResponse = await fetch(SCRIPT_URL, {
-                    method: "POST",
-                    body: JSON.stringify({
-                        studentId: studentId,
-                        lessonId: lessonId,
-                        targetTopic: targetTopic, // <--- INJECTED HERE
-                        taskType: "hint", 
-                        prompt: `I missed the following questions. Look at the ${hintContextName} from the lesson and give me a brief, 1-sentence hint for EACH question to guide my thinking without giving away the direct answer.`,
-                        text: wrongQuestionsSummary, 
-                        type: "assessment"
-                    })
-                });
-                const hintResult = await hintResponse.json();
-                if(hintResult.reply && !hintResult.reply.includes("API Error")) {
-                    hintText = hintResult.reply;
-                } else if (hintResult.reply && hintResult.reply.includes("Quota exceeded")) {
-                    hintText = "The AI tutor is a little busy right now! Please re-read the passage and try again.";
-                }
-            } catch(e) { console.error(e); }
-            
-            for (let i = 0; i < quizQuestions.length; i++) {
-                const q = quizQuestions[i];
-                const fbBox = document.getElementById(`qFeedback_${i}`);
-                fbBox.style.display = "block";
-                
-                if (q.correctLetter && q.selectedLetter === q.correctLetter) {
-                    fbBox.style.borderLeftColor = "var(--success)";
-                    fbBox.style.backgroundColor = "#e8f5e9";
-                    fbBox.innerHTML = `<strong>✅ Correct!</strong>`;
-                } else {
-                    fbBox.style.borderLeftColor = "var(--writing)";
-                    fbBox.style.backgroundColor = "#fff3cd";
-                    fbBox.innerHTML = `<strong>❌ Incorrect.</strong> Check the hint below!`;
-                }
-            }
-            
-            document.getElementById('feedback-box').style.display = "block";
-            document.getElementById('feedback-box').style.borderLeftColor = "var(--writing)";
-            document.getElementById('feedback-box').style.backgroundColor = "#fff3cd";
-            document.getElementById('scoreDisplay').innerText = `Attempt 1: ${currentScore} out of ${quizQuestions.length}`;
-            document.getElementById('replyDisplay').innerHTML = `<strong>💡 AI Hints:</strong><br><br>${hintText.replace(/\n/g, '<br>')}`;
-            
-            attemptCount = 2;
-            document.getElementById('status').innerText = "Review your hints, correct your mistakes, and submit Attempt 2.";
-            document.getElementById(submitBtnId).innerText = "Submit Attempt 2";
-            document.getElementById(submitBtnId).disabled = false;
-            return;
-        }
-
-        if (attemptCount === 1) {
-            attemptsData.attempt1 = studentAnswersRecord;
+        if (taskTypeParam === "writing" || taskTypeParam === "reflection") {
+            document.getElementById('writingUI').style.display = "block";
         } else {
-            attemptsData.attempt2 = studentAnswersRecord;
+            document.getElementById('speakingUI').style.display = "block";
         }
-
-        for (let i = 0; i < quizQuestions.length; i++) {
-            const q = quizQuestions[i];
-            const fbBox = document.getElementById(`qFeedback_${i}`);
-            fbBox.style.display = "block";
-            
-            if (q.correctLetter && q.selectedLetter === q.correctLetter) {
-                fbBox.style.borderLeftColor = "var(--success)";
-                fbBox.style.backgroundColor = "#e8f5e9";
-                fbBox.innerHTML = `<strong>✅ Correct!</strong> ${q.feedback}`;
-            } else {
-                fbBox.style.borderLeftColor = "var(--error)";
-                fbBox.style.backgroundColor = "#ffebee";
-                const displayCorrect = q.correctLetter ? `The correct answer was <strong>${q.correctLetter}</strong>.` : `<em>(Correct answer key could not be loaded)</em>.`;
-                fbBox.innerHTML = `<strong>❌ Incorrect.</strong> ${displayCorrect} <br>${q.feedback}`;
-            }
-        }
-        
-        const finalScoreText = `${currentScore} out of ${quizQuestions.length}`;
-        document.getElementById('status').innerText = `Done! Final Score: ${finalScoreText}`;
-        
-        document.getElementById('feedback-box').style.borderLeftColor = "var(--primary)";
-        document.getElementById('feedback-box').style.backgroundColor = "#eef7ff";
-        showFeedback({score: finalScoreText, reply: "Scores have been recorded. Check individual questions for correct answers and feedback!"});
-
-        let combinedTextForSheet = attemptsData.attempt1;
-        if (attemptsData.attempt2) combinedTextForSheet += " | " + attemptsData.attempt2;
-
-        try {
-            await fetch(SCRIPT_URL, {
-                method: "POST",
-                body: JSON.stringify({
-                    studentId: studentId,
-                    lessonId: lessonId,
-                    targetTopic: targetTopic, // <--- INJECTED HERE
-                    taskType: taskType, 
-                    prompt: "Multiple Choice Questions",
-                    text: combinedTextForSheet, 
-                    score2: finalScoreText,     
-                    type: "assessment"
-                })
-            });
-        } catch(e) { console.error("Logging error", e); }
-
-        document.getElementById(submitBtnId).style.display = "none";
-        document.querySelectorAll('input[type="radio"]').forEach(r => r.disabled = true);
     }
 
-    // --- TEXT TASKS SUBMISSION (Handles Writing & Reflection) ---
-    async function submitTextTask(type) {
-        let text1 = "";
-        let text2 = "";
-        let combinedPrompt = "";
-        let submitBtnId = "";
-
-        if (type === 'writing') {
-            text1 = document.getElementById('writingScaffoldedText').value.trim();
-            text2 = document.getElementById('writingOpenEndedText').value.trim();
-            
-            if(!text1 && !text2) return alert("Please enter a response.");
-            
-            const scafPrompt = document.getElementById('scaffoldedPrompt').innerText;
-            const openPrompt = document.getElementById('openEndedPrompt').innerText;
-            combinedPrompt = `Scaffolded Task: ${scafPrompt} | Open-Ended: ${openPrompt}`;
-            submitBtnId = 'submitWritingBtn';
-            
-        } else if (type === 'reflection') {
-            text1 = document.getElementById('reflectionText').value.trim();
-            if(!text1) return alert("Please enter your reflection.");
-            
-            combinedPrompt = document.getElementById('reflectionPrompt').innerText;
-            submitBtnId = 'submitReflectionBtn';
-        }
-
-        document.getElementById('status').innerText = "AI is evaluating your submission...";
-        document.getElementById(submitBtnId).disabled = true;
-
-        const payload = { 
-            studentId, 
-            lessonId, 
-            targetTopic, // <--- INJECTED HERE
-            prompt: combinedPrompt, 
-            text: text1, 
-            taskType: type, 
-            type: "assessment" 
+    async function submitWriting() {
+        const text1 = document.getElementById('textResponse').value;
+        const text2 = document.getElementById('textResponse2') ? document.getElementById('textResponse2').value : "";
+        
+        if (!text1) { alert("Please type something before submitting."); return; }
+        
+        document.getElementById('submitWritingBtn').disabled = true;
+        document.getElementById('status').innerText = "Submitting to AI Tutor...";
+        
+        const payload = {
+            studentId, lessonId, targetTopic, prompt: currentPrompt,
+            text: text1, text2: text2, taskType: taskTypeParam, type: "assessment"
         };
         
-        if (type === 'writing') {
-            payload.text2 = text2; 
-        }
-
-        try {
-            const response = await fetch(SCRIPT_URL, {
-                method: "POST",
-                body: JSON.stringify(payload)
-            });
-            const result = await response.json();
-            showFeedback(result);
-        } catch(e) {
-            console.error(e);
-            document.getElementById('status').innerText = "Error submitting task.";
-            document.getElementById(submitBtnId).disabled = false;
-        }
+        const response = await fetch(SCRIPT_URL, {
+            method: "POST",
+            body: JSON.stringify(payload)
+        });
+        
+        showFeedback(await response.json());
     }
 
-    function showFeedback(result) {
-        document.getElementById('feedback-box').style.display = "block";
-        document.getElementById('scoreDisplay').innerText = result.score;
-        document.getElementById('replyDisplay').innerHTML = result.reply;
-        document.getElementById('status').innerText = "Task Complete!";
-    }
-
-    // ==========================================
-    // AUDIO / VOICE RECORDING
-    // ==========================================
     async function toggleRecording() {
         if (!isRecording) {
             try {
@@ -541,47 +151,43 @@
                 audioChunks = [];
                 finalTranscript = "";
 
-                recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-                recognition.interimResults = false;
-                recognition.continuous = true; 
-                
-                recognition.onresult = (event) => {
-                    for(let i = event.resultIndex; i < event.results.length; i++){
-                        finalTranscript += event.results[i][0].transcript + " ";
-                    }
-                };
+                if ('webkitSpeechRecognition' in window) {
+                    recognition = new webkitSpeechRecognition();
+                    recognition.continuous = true;
+                    recognition.interimResults = true;
+                    recognition.onresult = (event) => {
+                        let interim = "";
+                        for (let i = event.resultIndex; i < event.results.length; ++i) {
+                            if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript + " ";
+                            else interim += event.results[i][0].transcript;
+                        }
+                        document.getElementById('status').innerText = "Listening: " + interim;
+                    };
+                    recognition.start();
+                }
 
-                mediaRecorder.ondataavailable = e => {
-                    if (e.data.size > 0) audioChunks.push(e.data);
-                };
-
+                mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
                 mediaRecorder.onstop = async () => {
-                    document.getElementById('status').innerText = "Packaging audio file...";
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    
                     const reader = new FileReader();
                     reader.readAsDataURL(audioBlob);
                     reader.onloadend = () => {
-                        const base64data = reader.result.split(',')[1];
-                        submitAudioTask(finalTranscript.trim(), base64data, 'audio/webm');
+                        const base64Audio = reader.result.split(',')[1];
+                        submitAudioTask(finalTranscript, base64Audio, 'audio/webm');
                     };
+                    stream.getTracks().forEach(track => track.stop());
                 };
 
                 mediaRecorder.start();
-                recognition.start();
-                
                 document.getElementById('recordBtn').classList.add('recording');
-                document.getElementById('recordBtn').innerText = "⏹ Stop Recording";
-                document.getElementById('status').innerText = "Recording... Speak clearly.";
+                document.getElementById('recordBtn').innerText = "🛑 Stop & Submit";
                 isRecording = true;
-
             } catch (err) {
-                alert("Microphone access denied. Please allow microphone permissions in your browser.");
-                console.error(err);
+                alert("Please allow microphone permissions.");
             }
         } else {
             mediaRecorder.stop();
-            recognition.stop();
+            if(recognition) recognition.stop();
             document.getElementById('recordBtn').classList.remove('recording');
             document.getElementById('recordBtn').innerText = "🎤 Start Recording";
             isRecording = false;
@@ -595,18 +201,35 @@
         const response = await fetch(SCRIPT_URL, {
             method: "POST",
             body: JSON.stringify({ 
-                studentId, 
-                lessonId, 
-                targetTopic, // <--- INJECTED HERE
-                prompt: currentPrompt, 
-                text: transcript || "No speech detected by browser.", 
-                audioBase64: audioBase64, 
-                mimeType: mimeType,
-                taskType: "speaking", 
-                type: "assessment" 
+                studentId, lessonId, targetTopic, prompt: currentPrompt, 
+                text: transcript || "No speech detected.", 
+                audioBase64: audioBase64, mimeType: mimeType,
+                taskType: "speaking", type: "assessment" 
             })
         });
         showFeedback(await response.json());
+    }
+
+    function showFeedback(result) {
+        document.getElementById('feedback-box').style.display = "block";
+        document.getElementById('scoreDisplay').innerText = result.score !== undefined ? result.score : "N/A";
+        
+        if (result.vocab && result.vocab !== "?") {
+            document.getElementById('rubric-breakdown').style.display = "block";
+            document.getElementById('vocabScore').innerText = result.vocab;
+            document.getElementById('syntaxScore').innerText = result.syntax;
+            document.getElementById('orgScore').innerText = result.org;
+            document.getElementById('varietyScore').innerText = result.variety;
+        }
+        
+        // Show Dynamic Rubric Image if the AI sent one!
+        if (result.rubricUrl) {
+            document.getElementById('dynamicRubric').src = result.rubricUrl;
+            document.getElementById('rubric-display-container').style.display = "block";
+        }
+        
+        document.getElementById('replyDisplay').innerText = result.reply;
+        document.getElementById('status').innerText = "Task Complete!";
     }
 
     window.onload = loadData;
