@@ -62,7 +62,6 @@
 
     <div id="feedback-box">
         <strong>Overall AI Score: <span id="scoreDisplay">-</span>/5</strong>
-        
         <div id="rubric-breakdown" style="display: none;">
             <div class="rubric-scores">
                 <div class="score-row"><span>📚 <strong>Vocabulary</strong></span> <span class="score-val"><span id="vocabScore">-</span>/5</span></div>
@@ -71,9 +70,7 @@
                 <div class="score-row"><span>🔄 <strong>Sentence Variety</strong></span> <span class="score-val"><span id="varietyScore">-</span>/5</span></div>
             </div>
         </div>
-        
         <p id="replyDisplay" style="margin-top: 15px; line-height: 1.6;"></p>
-
         <div id="rubric-display-container" style="display:none; margin-top:20px; text-align: center;">
             <p style="font-size:0.85rem; color:#666; margin-bottom: 5px;"><strong>Your Grading Rubric:</strong></p>
             <img id="dynamicRubric" src="" alt="ELPA21 Grading Rubric" style="max-width:100%; border:1px solid #ccc; border-radius:5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
@@ -88,7 +85,6 @@
     const studentId = urlParams.get('studentId') || "UnknownStudent";
     const lessonId = urlParams.get('lessonId') || "UnknownLesson";
     const taskTypeParam = (urlParams.get('taskType') || "speaking").toLowerCase();
-    
     const currentVocabId = urlParams.get('vocabId') || ""; 
     
     let currentPrompt = "Tell me about what you learned today.";
@@ -101,37 +97,62 @@
     let finalTranscript = "";
 
     async function loadData() {
-        document.getElementById('status').innerText = "Loading specific task details...";
+        document.getElementById('status').innerText = "Connecting to database...";
         try {
             const response = await fetch(`${SCRIPT_URL}?lessonId=${lessonId}`);
-            const data = await response.json();
+            
+            // DIAGNOSTIC CHECK: Read as plain text first to catch HTML errors
+            const textResponse = await response.text();
+            let data;
+            try {
+                data = JSON.parse(textResponse);
+            } catch (jsonErr) {
+                console.error("SERVER RETURNED ERROR PAGE, NOT JSON. DATA WAS:", textResponse.substring(0, 300));
+                document.getElementById('status').innerText = "⚠️ Connection Error: Google Script is blocking access. Check deployment permissions.";
+                document.getElementById('status').style.color = "red";
+                throw new Error("Invalid connection response.");
+            }
             
             if (data.fullLesson) {
                 const lessonText = data.fullLesson;
                 
-                if (lessonText.includes("🎯 TITLE: ")) {
-                    targetTopic = lessonText.split("🎯 TITLE: ")[1].split("\n")[0].trim();
+                if (lessonText.includes("🎯 TITLE:")) {
+                    targetTopic = lessonText.split("🎯 TITLE:")[1].split("\n")[0].trim();
                 }
                 
-                // CORRECTED EXTRACTION BOUNDARIES FOR NEW LESSON FORMAT
-                if (taskTypeParam === "writing" && lessonText.includes("📝 WRITING TASK")) {
-                    currentPrompt = lessonText.split("📝 WRITING TASK")[1].split("🤔")[0].trim();
-                } else if (taskTypeParam === "speaking" && lessonText.includes("🗣️ SPEAKING TASK")) {
-                    currentPrompt = lessonText.split("🗣️ SPEAKING TASK")[1].split("📝")[0].trim();
-                } else if (taskTypeParam === "reflection" && lessonText.includes("🤔 REFLECTION TASK")) {
-                    currentPrompt = lessonText.split("🤔 REFLECTION TASK")[1].trim();
+                const getSection = (startText, endText) => {
+                    if (!lessonText.includes(startText)) return null;
+                    let chunk = lessonText.substring(lessonText.indexOf(startText) + startText.length);
+                    if (endText && chunk.includes(endText)) {
+                        chunk = chunk.substring(0, chunk.indexOf(endText));
+                    }
+                    return chunk.trim();
+                };
+
+                if (taskTypeParam === "writing") {
+                    currentPrompt = getSection("📝 WRITING TASK", "🤔 REFLECTION TASK") || "Please write about what you learned in this lesson.";
+                } else if (taskTypeParam === "speaking") {
+                    currentPrompt = getSection("🗣️ SPEAKING TASK", "📝 WRITING TASK") || "Please summarize the lesson out loud.";
+                } else if (taskTypeParam === "reflection") {
+                    let ref = getSection("🤔 REFLECTION TASK", "ELPA21"); 
+                    if (!ref) ref = getSection("🤔 REFLECTION TASK", null);
+                    currentPrompt = ref || "What did you think of this lesson? Explain your thoughts.";
                 } else if (taskTypeParam === "vocab") {
                     currentPrompt = "Complete the Frayer Model fields below for your vocabulary word.";
                 }
+            } else {
+                console.warn("No lesson text found in database.");
             }
         } catch (e) {
-            console.error(e);
+            console.error("Error loading task:", e);
             currentPrompt = "Could not load specific prompt. Please share your thoughts on the lesson.";
         }
         
         document.getElementById('taskHeader').innerText = taskTypeParam.charAt(0).toUpperCase() + taskTypeParam.slice(1) + " Task";
         document.getElementById('promptDisplay').innerText = currentPrompt;
-        document.getElementById('status').innerText = "";
+        if (document.getElementById('status').innerText === "Connecting to database...") {
+            document.getElementById('status').innerText = "";
+        }
 
         if (taskTypeParam === "writing" || taskTypeParam === "reflection") {
             document.getElementById('writingUI').style.display = "block";
@@ -145,58 +166,48 @@
     async function submitWriting() {
         const text1 = document.getElementById('textResponse').value;
         const text2 = document.getElementById('textResponse2') ? document.getElementById('textResponse2').value : "";
-        
         if (!text1) { alert("Please type something before submitting."); return; }
         
         document.getElementById('submitWritingBtn').disabled = true;
         document.getElementById('status').innerText = "Submitting to AI Tutor...";
+        document.getElementById('status').style.color = "#7F8C8D";
         
         const payload = {
             studentId, lessonId, targetTopic, prompt: currentPrompt,
             text: text1, text2: text2, taskType: taskTypeParam, type: "assessment"
         };
         
-        const response = await fetch(SCRIPT_URL, {
-            method: "POST",
-            body: JSON.stringify(payload)
-        });
-        
-        showFeedback(await response.json());
+        try {
+            const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+            showFeedback(await response.json());
+        } catch(e) {
+            document.getElementById('status').innerText = "Error submitting. Please check connection.";
+            document.getElementById('status').style.color = "red";
+        }
     }
 
     async function submitVocab() {
         const def = document.getElementById('defInput').value;
         const sent = document.getElementById('sentInput').value;
-        
-        if (!def || !sent) { 
-            alert("Please fill out at least your personal definition and sentence."); 
-            return; 
-        }
+        if (!def || !sent) { alert("Please fill out at least your personal definition and sentence."); return; }
         
         document.getElementById('submitVocabBtn').disabled = true;
         document.getElementById('status').innerText = "Submitting Vocabulary to AI Tutor...";
         
         const payload = {
-            studentId: studentId,
-            lessonId: lessonId,
-            vocabId: currentVocabId,
-            taskType: "vocab",       
-            personalDef: def,
-            personalSent: sent,
+            studentId, lessonId, vocabId: currentVocabId, taskType: "vocab",
+            personalDef: def, personalSent: sent,
             example: document.getElementById('exampleInput').value,
             nonExample: document.getElementById('nonExampleInput').value,
-            type: "assessment"       
+            type: "assessment"
         };
         
         try {
-            const response = await fetch(SCRIPT_URL, {
-                method: "POST",
-                body: JSON.stringify(payload)
-            });
+            const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
             showFeedback(await response.json());
         } catch(e) {
             document.getElementById('status').innerText = "Error submitting task.";
-            console.error(e);
+            document.getElementById('status').style.color = "red";
         }
     }
 
@@ -219,6 +230,7 @@
                             else interim += event.results[i][0].transcript;
                         }
                         document.getElementById('status').innerText = "Listening: " + interim;
+                        document.getElementById('status').style.color = "#7F8C8D";
                     };
                     recognition.start();
                 }
@@ -255,16 +267,20 @@
         document.getElementById('status').innerText = "AI is analyzing your speech & uploading file...";
         document.getElementById('recordBtn').disabled = true;
 
-        const response = await fetch(SCRIPT_URL, {
-            method: "POST",
-            body: JSON.stringify({ 
-                studentId, lessonId, targetTopic, prompt: currentPrompt, 
-                text: transcript || "No speech detected.", 
-                audioBase64: audioBase64, mimeType: mimeType,
-                taskType: "speaking", type: "assessment" 
-            })
-        });
-        showFeedback(await response.json());
+        const payload = { 
+            studentId, lessonId, targetTopic, prompt: currentPrompt, 
+            text: transcript || "No speech detected.", 
+            audioBase64: audioBase64, mimeType: mimeType,
+            taskType: "speaking", type: "assessment" 
+        };
+
+        try {
+            const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+            showFeedback(await response.json());
+        } catch(e) {
+            document.getElementById('status').innerText = "Error analyzing audio.";
+            document.getElementById('status').style.color = "red";
+        }
     }
 
     function showFeedback(result) {
