@@ -1,270 +1,705 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ELL Interactive Lesson</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <title>Practice Room</title>
     <style>
-        :root { --primary: #4A90E2; --secondary: #50E3C2; --bg: #F4F7F9; --error: #FF4B2B; --success: #28a745; }
-        body { font-family: 'Poppins', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; min-height: 100vh; }
-        .container { width: 100%; max-width: 600px; }
-        .card { background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; }
-        .lesson-card { text-align: left; }
-        .lesson-text { white-space: pre-wrap; font-size: 0.95rem; line-height: 1.6; color: #333; }
-        .btn { border: none; padding: 12px 24px; border-radius: 50px; cursor: pointer; font-weight: 600; transition: 0.3s; margin: 10px 0; width: 100%; }
-        .btn-listen { background: var(--secondary); color: white; }
-        .btn-record { background: var(--primary); color: white; }
-        .btn:disabled { background: #ccc; cursor: not-allowed; }
-        .recording { background: var(--error) !important; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-        #status, #writingStatus { margin-top: 15px; font-size: 0.9rem; color: #666; min-height: 40px; }
-        .feedback-box { margin-top: 20px; padding: 15px; border-radius: 10px; background: #eef7ff; display: none; text-align: left; }
-        .q-block { background: #fdfdfd; border: 1px solid #eee; border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: left; }
-        .q-text { font-weight: 600; margin-bottom: 10px; }
-        .q-option { display: block; margin-bottom: 8px; cursor: pointer; padding: 8px; border-radius: 8px; transition: 0.2s; }
-        .q-option:hover { background: #f0f8ff; }
-        .ai-feedback { margin-top: 10px; padding: 12px; background: #ffebee; border-left: 4px solid var(--error); border-radius: 4px; font-size: 0.9rem; display: none; }
-        textarea { width: 100%; padding: 15px; border-radius: 10px; border: 1px solid #ccc; font-family: inherit; font-size: 1rem; box-sizing: border-box; resize: vertical; margin-bottom: 10px; }
+        :root { --primary: #2C3E50; --secondary: #3498DB; --bg: #F5F7FA; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: var(--primary); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        #app-container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 800px; width: 100%; }
+        
+        /* Headers and Spacing */
+        .task-header { color: var(--secondary); font-size: 1.8em; font-weight: bold; margin: 0; text-transform: uppercase; }
+        .lesson-header { font-size: 1.4em; color: var(--primary); font-weight: bold; margin: 0; }
+        .spacer-line { height: 1em; } 
+        
+        /* Lesson Context UI */
+        #lessonContextBox { background-color: #EBF5FB; padding: 20px; border-radius: 8px; border-left: 5px solid var(--secondary); white-space: pre-wrap; font-size: 1.05em; line-height: 1.6; display: none; margin: 0; }
+        
+        /* Task Formating */
+        .mc-question { margin-bottom: 30px; }
+        .q-text { font-size: 1.1em; font-weight: bold; margin-bottom: 15px; }
+        .mc-option { display: block; margin-bottom: 15px; cursor: pointer; font-size: 1.05em; padding: 10px; border-radius: 5px; background: #FDFEFE; border: 1px solid #ECF0F1; transition: background 0.2s; }
+        .mc-option:hover { background: #F4F6F6; }
+        .mc-feedback { margin-top: 15px; font-size: 1em; padding: 15px; border-radius: 5px; display: none; line-height: 1.5; }
+        
+        /* Buttons */
+        .action-btn { background-color: var(--secondary); color: white; border: none; padding: 15px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; transition: background-color 0.3s; font-weight: bold; }
+        .action-btn:hover { background-color: #2980B9; }
+        .action-btn:disabled { background-color: #95A5A6; cursor: not-allowed; }
+        .centered-btn { display: block; margin: 0 auto; width: auto; min-width: 250px; }
+        .full-width-btn { width: 100%; display: block; }
+        .recording { background-color: #E74C3C !important; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+
+        /* Writing UI Elements */
+        .prompt-title { font-weight: bold; font-size: 1.2em; color: var(--primary); margin: 0; }
+        .prompt-text { font-size: 1.1em; line-height: 1.6; white-space: pre-wrap; margin-top: 10px; margin-bottom: 10px; }
+        textarea { width: 100%; height: 120px; padding: 15px; border: 1px solid #BDC3C7; border-radius: 8px; font-size: 16px; box-sizing: border-box; resize: vertical; margin-bottom: 0; }
+        textarea:focus { outline: none; border-color: var(--secondary); }
+        
+        /* Rubric & Feedback Styling */
+        #status { text-align: center; font-weight: bold; color: #7F8C8D; margin-top: 15px; min-height: 20px; }
+        .student-rubric { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; border: 1px solid #ECF0F1; display: none; }
+        .student-rubric th, .student-rubric td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ECF0F1; }
+        .student-rubric th { background-color: var(--secondary); color: white; font-weight: bold; }
+        .student-rubric tr:last-child td { border-bottom: none; }
+        .score-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.9em; background: #EAFAF1; color: #27AE60; }
+        .ai-feedback-box { margin-top: 25px; padding: 25px; background-color: #E8F8F5; border-left: 5px solid #1ABC9C; border-radius: 8px; display: none; font-size: 1.05em; line-height: 1.6; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="card lesson-card">
-        <h2>📚 Today's Lesson</h2>
-        <div id="lessonContent" class="lesson-text">Loading materials...</div>
-    </div>
+<div id="app-container">
+    <div class="task-header" id="headerTop">Loading...</div>
+    <div class="spacer-line"></div>
+    
+    <div class="lesson-header">Today's Lesson: <span id="targetTopicSpan"></span></div>
+    <div class="spacer-line"></div>
 
-    <div class="card">
-        <h2 id="taskTitle">Loading Task...</h2>
+    <div id="lessonContextBox"></div>
+    <div class="spacer-line"></div>
+
+    <div class="task-header" id="headerBottom">Loading...</div>
+    <div class="spacer-line"></div>
+
+    <div id="hiddenAudioScript" style="display:none;"></div>
+
+    <div id="mcUI" style="display:none;">
+        <div id="listeningControls" style="display:none;">
+            <button class="action-btn full-width-btn" id="btnPlayPrompt" onclick="playAudioScript()">Play Listening Prompt</button>
+            <div class="spacer-line"></div>
+            <button class="action-btn centered-btn" id="btnReadMC" onclick="readMC()">Read Aloud the Questions and Answer Choices</button>
+            <div class="spacer-line"></div>
+        </div>
         
-        <div id="speakingUI" style="display: none;">
-            <p id="promptText" style="font-style: italic; color: #555; margin-bottom: 15px;">Fetching prompt...</p>
-            <button class="btn btn-listen" onclick="listenToPrompt()">🔊 Listen to Prompt</button>
-            <button id="recordBtn" class="btn btn-record" onclick="toggleRecording()">🎤 Start Recording</button>
-            <div id="status">Ready!</div>
-            <div id="feedback-box" class="feedback-box">
-                <strong>ELPA21 Score: <span id="scoreDisplay">-</span>/5</strong>
-                <p id="replyDisplay"></p>
-            </div>
-        </div>
-
-        <div id="writingUI" style="display: none;">
-            <p id="writingPromptText" style="font-style: italic; color: #555; margin-bottom: 15px;">Fetching prompt...</p>
-            <textarea id="writingInput" rows="6" placeholder="Type your response here..."></textarea>
-            <button id="submitWritingBtn" class="btn btn-record" onclick="submitWriting()">📝 Submit Writing</button>
-            <div id="writingStatus">Ready!</div>
-            <div id="writing-feedback-box" class="feedback-box">
-                <strong>ELPA21 Score: <span id="writingScoreDisplay">-</span>/5</strong>
-                <p id="writingReplyDisplay"></p>
-            </div>
-        </div>
-
-        <div id="comprehensionUI" style="display: none;">
-            <div id="quizContainer"></div>
-            <button id="submitQuizBtn" class="btn btn-record" onclick="submitQuiz()" style="display:none;">Submit Answers</button>
-            <div id="quizStatus" style="margin-top: 15px; font-weight: 600;"></div>
-        </div>
+        <p style="font-size: 1.1em; font-weight: bold; margin-bottom: 20px;">Directions: Choose the best answer or answers for each question.</p>
+        <div class="spacer-line"></div>
+        
+        <div id="mcContainer"></div>
+        <div class="spacer-line"></div>
+        <button class="action-btn centered-btn" id="submitMCBtn" onclick="submitMC()">Submit</button>
     </div>
+
+    <div id="speakingUI" style="display:none;">
+        <div id="speakRubricContainer"></div>
+        <div class="spacer-line"></div>
+        
+        <button class="action-btn centered-btn" id="btnReadSpeak" onclick="toggleSpeak(document.getElementById('speakPromptText').innerText, 'btnReadSpeak', 'Read Aloud the Speaking Prompt')">Read Aloud the Speaking Prompt</button>
+        <div class="spacer-line"></div>
+        
+        <div class="prompt-title">Speaking Prompt</div>
+        <div class="spacer-line"></div>
+        <div class="prompt-text" id="speakPromptText" style="margin:0;"></div>
+        <div class="spacer-line"></div>
+        
+        <button class="action-btn centered-btn" id="recordBtn" onclick="toggleRecording()">🎤 Start Recording</button>
+        <div id="speakingFeedback" class="ai-feedback-box"></div>
+    </div>
+
+    <div id="writingUI" style="display:none;">
+        <div id="writeRubricContainer"></div>
+        <div class="spacer-line"></div>
+        
+        <button class="action-btn centered-btn" id="btnReadWrite" onclick="readWritingPrompts()">Read Aloud the Writing Prompts</button>
+        <div class="spacer-line"></div>
+        
+        <div class="prompt-title">Scaffolded Task</div>
+        <div class="spacer-line"></div>
+        <div class="prompt-text" id="scaffoldedPrompt" style="margin:0;"></div>
+        <textarea id="textResponse" placeholder="Use academic vocabulary to complete the sentences and type the complete sentences here in this response box."></textarea>
+        <div class="spacer-line"></div>
+        
+        <div id="openEndedSection">
+            <div class="prompt-title">Extended Writing Task</div>
+            <div class="spacer-line"></div>
+            <div class="prompt-text" id="openEndedPrompt" style="margin:0;"></div>
+            <textarea id="textResponse2" placeholder="Type your response here."></textarea>
+            <div class="spacer-line"></div>
+        </div>
+        
+        <button class="action-btn centered-btn" id="submitWritingBtn" onclick="submitWriting()">Submit</button>
+        <div id="writingFeedback" class="ai-feedback-box"></div>
+    </div>
+
+    <div id="vocabUI" style="display:none;">
+        <div class="prompt-title" style="margin-top:0;">Vocabulary Word Tasks</div>
+        <div class="spacer-line"></div>
+        <div class="prompt-title">Personal Definition:</div>
+        <textarea id="defInput" placeholder="Define the word in your own words..."></textarea>
+        <div class="spacer-line"></div>
+        <div class="prompt-title">Personal Sentence:</div>
+        <textarea id="sentInput" placeholder="Use the word in a sentence..."></textarea>
+        <div class="spacer-line"></div>
+        <div class="prompt-title">Example:</div>
+        <textarea id="exampleInput" placeholder="Give an example..."></textarea>
+        <div class="spacer-line"></div>
+        <div class="prompt-title">Non-Example:</div>
+        <textarea id="nonExampleInput" placeholder="Give a non-example or opposite..."></textarea>
+        <div class="spacer-line"></div>
+        <button class="action-btn centered-btn" id="submitVocabBtn" onclick="submitVocab()">Submit</button>
+        <div id="vocabFeedback" class="ai-feedback-box"></div>
+    </div>
+
+    <div id="status"></div>
 </div>
 
 <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyvucmpyniDeXtsY8fSIBVU57o0qfXtyIEXEoM0Pf2-sb3JbfnRQtY5ax1tj0C8fCJ9zw/exec"; 
-    const urlParams = new URLSearchParams(window.location.search);
-    const lessonId = urlParams.get('lessonId');
-    const studentId = urlParams.get('studentId');
-    const taskType = urlParams.get('taskType') || 'speaking';
+    // --- CRASH DETECTOR --- 
+    window.onerror = function(message, source, lineno, colno, error) {
+        document.getElementById('headerTop').innerText = "CRASH: " + message + " (Line " + lineno + ")";
+        document.getElementById('headerTop').style.color = "red";
+    };
 
-    let currentPrompt = "";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyvucmpyniDeXtsY8fSIBVU57o0qfXtyIEXEoM0Pf2-sb3JbfnRQtY5ax1tj0C8fCJ9zw/exec";
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const studentId = urlParams.get('studentId') || "UnknownStudent";
+    const lessonId = urlParams.get('lessonId') || "UnknownLesson";
+    const taskTypeParam = (urlParams.get('taskType') || "speaking").toLowerCase();
+    const currentVocabId = urlParams.get('vocabId') || ""; 
+    
+    const submissionId = "sub_" + new Date().getTime();
+    
+    let currentPrompt = "Tell me about what you learned today.";
+    let targetTopic = "";
+    let storedAnswerKey = "";
+    let correctAnswers = {}; 
+    let answerExplanations = {};
+    let attemptCount = 0;
+    let mcQuestionCount = 0;
+    
     let isRecording = false;
+    let mediaRecorder;
+    let audioChunks = [];
     let recognition;
-    let quizData = [];
-    let attemptNum = 1;
-    let scoreAttempt1 = 0;
+    let finalTranscript = "";
+    
+    let isSpeaking = false;
+    let currentTTSBtn = null;
+
+    function parseMarkdown(text) {
+        if (!text) return "";
+        return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>').replace(/<\/?QUESTION>/gi, '');
+    }
+
+    function getRubricHTML(prefix) {
+        return `
+        <table class="student-rubric" id="${prefix}RubricTable" style="display:table;">
+            <thead><tr><th>ELPA21 Grading Rubric</th><th>Score</th></tr></thead>
+            <tbody>
+                <tr><td><strong>Vocabulary:</strong> Using descriptive and accurate academic words.</td><td><span class="score-badge" id="${prefix}vocabScore">-</span> / 5</td></tr>
+                <tr><td><strong>Syntax & Grammar:</strong> Building clear and correct sentences.</td><td><span class="score-badge" id="${prefix}syntaxScore">-</span> / 5</td></tr>
+                <tr><td><strong>Organization:</strong> Connecting ideas logically.</td><td><span class="score-badge" id="${prefix}orgScore">-</span> / 5</td></tr>
+                <tr><td><strong>Sentence Variety:</strong> Using a mix of short and complex sentences.</td><td><span class="score-badge" id="${prefix}varietyScore">-</span> / 5</td></tr>
+            </tbody>
+        </table>`;
+    }
+
+    function toggleSpeak(text, btnId, defaultText) {
+        let btnElement = document.getElementById(btnId);
+        
+        if (isSpeaking && currentTTSBtn === btnId) {
+            window.speechSynthesis.cancel();
+            btnElement.innerHTML = defaultText;
+            isSpeaking = false;
+            currentTTSBtn = null;
+            return;
+        }
+        
+        window.speechSynthesis.cancel(); 
+        if (currentTTSBtn) {
+            let oldBtn = document.getElementById(currentTTSBtn);
+            if(oldBtn) oldBtn.innerHTML = oldBtn.dataset.defaultText;
+        }
+        
+        let cleanText = text.replace(/<[^>]+>/g, '').replace(/\*/g, ''); 
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        
+        utterance.onend = () => { 
+            if(btnElement) btnElement.innerHTML = defaultText; 
+            isSpeaking = false; 
+            currentTTSBtn = null;
+        };
+        
+        btnElement.dataset.defaultText = defaultText;
+        currentTTSBtn = btnId;
+        
+        if (btnId === 'btnPlayPrompt') btnElement.innerHTML = "⏹️ Stop Listening Prompt";
+        else btnElement.innerHTML = "⏹️ Stop Reading";
+        
+        isSpeaking = true;
+        window.speechSynthesis.speak(utterance);
+    }
+
+    function playAudioScript() {
+        let text = document.getElementById('hiddenAudioScript').innerText;
+        toggleSpeak(text, 'btnPlayPrompt', 'Play Listening Prompt');
+    }
+
+    function readMC() {
+        let text = "";
+        let qBlocks = document.querySelectorAll('.mc-question');
+        qBlocks.forEach(block => {
+            text += block.querySelector('.q-text').innerText + ". ";
+            let options = block.querySelectorAll('.mc-option');
+            options.forEach(opt => text += opt.innerText + ". ");
+        });
+        toggleSpeak(text, 'btnReadMC', 'Read Aloud the Questions and Answer Choices');
+    }
+
+    function readWritingPrompts() {
+        let scaf = document.getElementById('scaffoldedPrompt').innerText;
+        let open = document.getElementById('openEndedPrompt').innerText;
+        let text = "Scaffolded Task. " + scaf + " Extended Writing Task. " + open;
+        toggleSpeak(text, 'btnReadWrite', 'Read Aloud the Writing Prompts');
+    }
+
+    function extractCorrectAnswers() {
+        correctAnswers = {};
+        answerExplanations = {};
+        const keyRegex = /(?:^|\n|<br>)\s*(\d+)[\.\)]\s*([A-D])\s*[\-\u2013\:]?\s*([\s\S]*?)(?=(?:\n|<br>)\s*\d+[\.\)]\s*[A-D]|$)/gi;
+        let kMatch;
+        while ((kMatch = keyRegex.exec(storedAnswerKey)) !== null) {
+            correctAnswers[kMatch[1]] = kMatch[2].toUpperCase();
+            answerExplanations[kMatch[1]] = kMatch[3].trim();
+        }
+    }
+
+    function renderMCUI(rawText, taskType) {
+        let container = document.getElementById('mcContainer');
+        container.innerHTML = "";
+        let html = "";
+
+        const audioMatch = rawText.match(/<AUDIO_SCRIPT>([\s\S]*?)<\/AUDIO_SCRIPT>/i);
+        if (audioMatch) {
+            document.getElementById('hiddenAudioScript').innerText = audioMatch[1].trim();
+            rawText = rawText.replace(audioMatch[0], ""); 
+        }
+
+        rawText = rawText.replace(/<\/?QUESTION>/gi, '');
+        let chunks = rawText.split(/(?=\n\d+\.)|(?=^\d+\.)/);
+        mcQuestionCount = 0;
+
+        for (let chunk of chunks) {
+            chunk = chunk.trim();
+            if (!chunk || chunk.toLowerCase().startsWith('answer key')) continue;
+
+            let lines = chunk.split('\n');
+            let qText = "";
+            let options = [];
+
+            for (let line of lines) {
+                line = line.trim();
+                if (/^[A-E][\.\)]/i.test(line)) { options.push(line); } 
+                else if (line) { qText += line + " "; }
+            }
+
+            if (options.length > 0) {
+                mcQuestionCount++;
+                html += `<div class="mc-question" id="qBlock_${mcQuestionCount}">
+                            <div class="q-text">${parseMarkdown(qText.trim())}</div>
+                            <div class="spacer-line"></div>`;
+                            
+                for (let opt of options) {
+                    html += `<label class="mc-option">
+                                <input type="radio" name="question_${mcQuestionCount}" value="${opt.replace(/"/g, '&quot;')}"> 
+                                ${parseMarkdown(opt)}
+                             </label>`;
+                }
+                html += `<div class="mc-feedback" id="feedback_q${mcQuestionCount}"></div></div>`;
+            }
+        }
+        
+        container.innerHTML = html;
+        document.getElementById('mcUI').style.display = "block";
+        if (taskType === "listening") document.getElementById('listeningControls').style.display = "block";
+    }
 
     async function loadData() {
-        if (!lessonId) {
-            document.getElementById('lessonContent').innerText = "Missing Lesson ID.";
-            return;
-        }
-        try {
-            const response = await fetch(`${SCRIPT_URL}?lessonId=${lessonId}`);
-            const data = await response.json();
-            document.getElementById('lessonContent').innerText = data.fullLesson || "No text available.";
-            
-            currentPrompt = data.prompt || "Please discuss today's lesson.";
+        document.getElementById('status').innerText = "Connecting to database...";
+        
+        let prettyTaskName = "";
+        if (taskTypeParam === 'listening') prettyTaskName = "🎧 LISTENING TASK";
+        else if (taskTypeParam === 'comprehension') prettyTaskName = "❓ COMPREHENSION TASK";
+        else if (taskTypeParam === 'speaking') prettyTaskName = "🗣️ SPEAKING TASK";
+        else if (taskTypeParam === 'writing') prettyTaskName = "📝 WRITING TASK";
+        else if (taskTypeParam === 'vocab') prettyTaskName = "🧠 VOCABULARY TASK";
+        else prettyTaskName = taskTypeParam.toUpperCase() + " TASK";
 
-            if (taskType === 'comprehension') {
-                document.getElementById('taskTitle').innerText = "🧠 Comprehension Task";
-                document.getElementById('comprehensionUI').style.display = "block";
-                buildQuiz(data.comprehension);
-            } else if (taskType === 'writing') {
-                document.getElementById('taskTitle').innerText = "📝 Writing Task";
-                document.getElementById('writingUI').style.display = "block";
-                document.getElementById('writingPromptText').innerText = currentPrompt;
-            } else {
-                document.getElementById('taskTitle').innerText = "🗣️ Speaking Task";
-                document.getElementById('speakingUI').style.display = "block";
-                document.getElementById('promptText').innerText = currentPrompt;
+        document.getElementById('headerTop').innerText = prettyTaskName;
+        document.getElementById('headerBottom').innerText = prettyTaskName;
+
+        try {
+            const fetchUrl = `${SCRIPT_URL}?lessonId=${encodeURIComponent(lessonId)}`;
+            const response = await fetch(fetchUrl, { redirect: "follow" });
+            const textResponse = await response.text();
+            let data;
+            try { data = JSON.parse(textResponse); } 
+            catch (jsonErr) { throw new Error("Invalid connection response."); }
+            
+            if (data.fullLesson) {
+                const lessonText = data.fullLesson;
+                
+                if (lessonText.includes("🎯 TITLE:")) {
+                    targetTopic = lessonText.split("🎯 TITLE:")[1].split("\n")[0].trim();
+                    document.getElementById('targetTopicSpan').innerText = targetTopic;
+                }
+                
+                const getSection = (startMarker, endMarker) => {
+                    let start = lessonText.indexOf(startMarker);
+                    if (start === -1) return null;
+                    let end = endMarker ? lessonText.indexOf(endMarker, start) : lessonText.length;
+                    if (end === -1) end = lessonText.length;
+                    return lessonText.substring(start, end).trim();
+                };
+
+                let endOfVocab = "🎧 LISTENING TASK";
+                if (!lessonText.includes(endOfVocab)) endOfVocab = "❓ COMPREHENSION TASK";
+                if (!lessonText.includes(endOfVocab)) endOfVocab = "🗣️ SPEAKING TASK";
+
+                let contextText = getSection("🎯 OBJECTIVE", endOfVocab);
+                if (contextText) {
+                    if (contextText.includes("📋 STANDARDS") && contextText.includes("📖 ANCHOR")) {
+                        let before = contextText.substring(0, contextText.indexOf("📋 STANDARDS"));
+                        let after = contextText.substring(contextText.indexOf("📖 ANCHOR"));
+                        contextText = before + "\n" + after;
+                    }
+                    document.getElementById('lessonContextBox').innerHTML = parseMarkdown(contextText);
+                    document.getElementById('lessonContextBox').style.display = "block";
+                }
+                
+                if (taskTypeParam === "listening" || taskTypeParam === "comprehension") {
+                    let endTag = taskTypeParam === "listening" ? "❓ COMPREHENSION TASK" : "🗣️ SPEAKING TASK";
+                    let raw = getSection(taskTypeParam === "listening" ? "🎧 LISTENING TASK" : "❓ COMPREHENSION TASK", endTag) || currentPrompt;
+                    
+                    if (raw.includes("Answer Key:")) {
+                        let parts = raw.split("Answer Key:");
+                        currentPrompt = parts[0].trim();
+                        storedAnswerKey = parseMarkdown(parts[1].trim());
+                        extractCorrectAnswers();
+                    } else currentPrompt = raw;
+                    
+                    renderMCUI(currentPrompt, taskTypeParam);
+
+                } else if (taskTypeParam === "speaking") {
+                    document.getElementById('speakRubricContainer').innerHTML = getRubricHTML('speak_');
+                    let rawPrompt = getSection("🗣️ SPEAKING TASK", "📝 WRITING TASK") || "Please summarize the lesson out loud.";
+                    currentPrompt = rawPrompt.replace("🗣️ SPEAKING TASK", "").trim();
+                    document.getElementById('speakPromptText').innerHTML = parseMarkdown(currentPrompt);
+                    document.getElementById('speakingUI').style.display = "block";
+
+                } else if (taskTypeParam === "writing" || taskTypeParam === "reflection") {
+                    document.getElementById('writeRubricContainer').innerHTML = getRubricHTML('write_');
+                    
+                    let rawPrompt = taskTypeParam === "writing" ? 
+                        (getSection("📝 WRITING TASK", "🤔 REFLECTION TASK") || "Please write about what you learned.") :
+                        (getSection("🤔 REFLECTION TASK", "ELPA21") || getSection("🤔 REFLECTION TASK", null) || "Explain your thoughts.");
+                    
+                    currentPrompt = rawPrompt.replace("📝 WRITING TASK", "").trim();
+                    
+                    let scafPrompt = currentPrompt;
+                    let openPrompt = "";
+                    let splitToken = currentPrompt.includes("**Open-Ended Challenge:**") ? "**Open-Ended Challenge:**" : 
+                                     (currentPrompt.includes("Open-Ended Challenge:") ? "Open-Ended Challenge:" : null);
+                                     
+                    if (splitToken) {
+                        let parts = currentPrompt.split(splitToken);
+                        scafPrompt = parts[0].replace("**Scaffolded Task:**", "").replace("Scaffolded Task:", "").trim();
+                        openPrompt = parts[1].trim();
+                        document.getElementById('openEndedSection').style.display = "block";
+                    } else {
+                        document.getElementById('openEndedSection').style.display = "none";
+                    }
+
+                    document.getElementById('scaffoldedPrompt').innerHTML = parseMarkdown(scafPrompt);
+                    if(openPrompt) document.getElementById('openEndedPrompt').innerHTML = parseMarkdown(openPrompt);
+                    document.getElementById('writingUI').style.display = "block";
+
+                } else if (taskTypeParam === "vocab") {
+                    document.getElementById('vocabUI').style.display = "block";
+                }
             }
         } catch (e) {
-            document.getElementById('lessonContent').innerText = "Error connecting to Google Sheets.";
-        }
-    }
-
-    function listenToPrompt() {
-        window.speechSynthesis.speak(new SpeechSynthesisUtterance(currentPrompt));
-    }
-
-    // --- SPEAKING LOGIC ---
-    function toggleRecording() {
-        const btn = document.getElementById('recordBtn');
-        const status = document.getElementById('status');
-        if (!isRecording) {
-            window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            recognition = new SpeechRecognition();
-            recognition.onresult = (e) => submitToAI(e.results[0][0].transcript);
-            recognition.start();
-            btn.innerText = "Stop & Submit";
-            btn.classList.add('recording');
-            status.innerText = "Listening...";
-            isRecording = true;
-        } else {
-            recognition.stop();
-            btn.innerText = "Processing...";
-            btn.classList.remove('recording');
-            status.innerText = "Grading against ELPA21 rubric...";
-            isRecording = false;
-        }
-    }
-
-    async function submitToAI(transcript) {
-        try {
-            const res = await fetch(SCRIPT_URL, {
-                method: "POST",
-                body: JSON.stringify({ 
-                    studentId, 
-                    lessonId, 
-                    taskType: "Speaking", 
-                    prompt: currentPrompt, 
-                    text: transcript, 
-                    type: "assessment" 
-                })
-            });
-            const result = await res.json();
-            document.getElementById('feedback-box').style.display = "block";
-            document.getElementById('scoreDisplay').innerText = result.score;
-            document.getElementById('replyDisplay').innerHTML = result.reply;
-            document.getElementById('status').innerText = "Saved to spreadsheet!";
-        } catch (e) { 
-            console.error(e); 
-            document.getElementById('status').innerText = "Error saving. Please try again.";
-        }
-        document.getElementById('recordBtn').innerText = "Start Recording";
-    }
-
-    // --- WRITING LOGIC ---
-    async function submitWriting() {
-        const text = document.getElementById('writingInput').value;
-        const btn = document.getElementById('submitWritingBtn');
-        const status = document.getElementById('writingStatus');
-        
-        if (!text.trim()) {
-            alert("Please type your answer first.");
-            return;
+            document.getElementById('status').innerText = `⚠️ SYSTEM WARNING: Data could not load. Refresh page.`;
         }
         
-        btn.innerText = "Grading...";
-        btn.disabled = true;
-        status.innerText = "Grading against ELPA21 rubric...";
-        
-        try {
-            const res = await fetch(SCRIPT_URL, {
-                method: "POST",
-                body: JSON.stringify({ 
-                    studentId, 
-                    lessonId, 
-                    taskType: "Writing", 
-                    prompt: currentPrompt, 
-                    text: text, 
-                    type: "assessment" 
-                })
-            });
-            const result = await res.json();
-            document.getElementById('writing-feedback-box').style.display = "block";
-            document.getElementById('writingScoreDisplay').innerText = result.score;
-            document.getElementById('writingReplyDisplay').innerHTML = result.reply;
-            status.innerText = "Saved to spreadsheet!";
-        } catch (e) { 
-            console.error(e); 
-            status.innerText = "Error saving. Please try again.";
+        if (document.getElementById('status').innerText === "Connecting to database...") {
+            document.getElementById('status').innerText = "";
         }
-        btn.innerText = "📝 Submit Writing";
-        btn.disabled = false;
     }
 
-    // --- COMPREHENSION LOGIC ---
-    function buildQuiz(raw) {
-        if (!raw) return;
-        const blocks = ("\n" + raw).split(/\n(?=\d+\.\s)/).filter(c => c.trim().length > 0);
-        blocks.forEach((block, index) => {
-            let lines = block.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-            let q = { id: index, text: "", options: {}, answer: [], feedback: "" };
-            lines.forEach(line => {
-                if (/^[A-D]\)/i.test(line)) q.options[line.charAt(0).toUpperCase()] = line.substring(2).trim();
-                else if (/^Answer:/i.test(line)) q.answer = line.substring(7).toUpperCase().match(/[A-D]/g) || [];
-                else if (/^Feedback:/i.test(line)) q.feedback = line.substring(9).trim();
-                else if (Object.keys(q.options).length === 0) q.text += " " + line;
-            });
-            if (Object.keys(q.options).length > 0) quizData.push(q);
-        });
-        let html = "";
-        quizData.forEach(q => {
-            html += `<div class="q-block">
-                <div class="q-text">${q.text}</div>`;
-            for (const [letter, text] of Object.entries(q.options)) {
-                html += `<label class="q-option" id="label_${q.id}_${letter}"><input type="radio" name="q_${q.id}" value="${letter}"> <strong>${letter})</strong> ${text}</label>`;
+    function submitMC() {
+        let answers = [];
+        let allCorrect = true;
+        let incorrectData = [];
+        let btn = document.getElementById('submitMCBtn');
+        
+        for (let i = 1; i <= mcQuestionCount; i++) {
+            let fbDiv = document.getElementById(`feedback_q${i}`);
+            if(fbDiv) { fbDiv.style.display = "none"; fbDiv.innerHTML = ""; }
+        }
+
+        for (let i = 1; i <= mcQuestionCount; i++) {
+            let selected = document.querySelector(`input[name="question_${i}"]:checked`);
+            if (!selected) { alert(`Please select an answer for Question ${i}.`); return; }
+            
+            answers.push(`Q${i}: ` + selected.value);
+            let userLetter = selected.value.charAt(0).toUpperCase();
+            let correctLetter = correctAnswers[i];
+            let fbDiv = document.getElementById(`feedback_q${i}`);
+            fbDiv.style.display = "block";
+
+            if (correctLetter && userLetter === correctLetter) {
+                fbDiv.style.backgroundColor = "#EAFAF1"; 
+                fbDiv.innerHTML = `<span style="color:#27AE60;font-weight:bold;">✅ Correct!</span>`;
+            } else {
+                allCorrect = false;
+                incorrectData.push(`Q${i} Incorrect choice: ${selected.value}`);
+                fbDiv.style.backgroundColor = "#FDEDEC"; 
+                
+                if (attemptCount === 0) {
+                    fbDiv.innerHTML = `<span style="color:#C0392B;font-weight:bold;">❌ Incorrect.</span> <span class="ai-hint-box" style="color:var(--secondary); font-style:italic;">Loading AI Hint...</span>`;
+                } else {
+                    fbDiv.innerHTML = `<span style="color:#C0392B;font-weight:bold;">❌ Incorrect.</span>`;
+                }
             }
-            html += `<div class="ai-feedback" id="fb_${q.id}"><strong>AI Guide:</strong> ${q.feedback}</div></div>`;
-        });
-        document.getElementById('quizContainer').innerHTML = html;
-        document.getElementById('submitQuizBtn').style.display = "block";
-    }
-
-    async function submitQuiz() {
-        let currentScore = 0;
-        let answers = "";
-        quizData.forEach(q => {
-            let selected = document.querySelector(`input[name="q_${q.id}"]:checked`)?.value;
-            let isCorrect = (selected === q.answer[0]);
-            if (isCorrect) currentScore++;
-            else if (attemptNum === 1) document.getElementById(`fb_${q.id}`).style.display = "block";
-            answers += `Q${q.id+1}:${selected || "N"} `;
-        });
-        if (attemptNum === 1 && currentScore < quizData.length) {
-            attemptNum = 2;
-            document.getElementById('quizStatus').innerText = "Try again with AI feedback!";
-            scoreAttempt1 = currentScore;
+        }
+        
+        if (attemptCount === 0) {
+            if (allCorrect) {
+                btn.disabled = true;
+                saveFinalAnswer(answers); 
+            } else {
+                document.getElementById('status').innerText = "Generating hints... You may retry now or wait for the hint.";
+                btn.innerText = "Submit Again";
+                btn.disabled = false;
+                attemptCount++;
+                
+                fetchHintAsync(incorrectData.join('\n'));
+            }
         } else {
-            document.getElementById('quizStatus').innerText = "Saving results...";
-            await fetch(SCRIPT_URL, {
-                method: "POST",
-                body: JSON.stringify({ 
-                    studentId, 
-                    lessonId, 
-                    taskType: "Comprehension", 
-                    studentAnswers: answers, 
-                    score1: scoreAttempt1 || currentScore, 
-                    score2: currentScore,
-                    type: "assessment"
-                })
-            });
-            document.getElementById('quizStatus').innerText = "Saved to spreadsheet!";
+            btn.disabled = true;
+            saveFinalAnswer(answers);
         }
     }
 
-    window.onload = loadData;
+    async function fetchHintAsync(incorrectText) {
+        const payload = { studentId, lessonId, submissionId, targetTopic, prompt: currentPrompt, text: incorrectText, taskType: "hint", type: "assessment" };
+        try {
+            const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+            const result = await response.json();
+            
+            let hintText = parseMarkdown(result.reply);
+            if (hintText.includes("very busy right now") || !hintText) hintText = "Please review the lesson text and try again.";
+
+            let hintBoxes = document.querySelectorAll('.ai-hint-box');
+            if (hintBoxes.length > 0) {
+                hintBoxes[0].innerHTML = `<br><strong style="color:var(--primary)">🤖 AI Hint:</strong> <span style="color:var(--primary); font-style:normal;">${hintText}</span>`;
+                for(let j=1; j<hintBoxes.length; j++) hintBoxes[j].innerHTML = "<br><em>Review the text and try again.</em>";
+            }
+            if (document.getElementById('status').innerText.includes("Generating hints")) {
+                 document.getElementById('status').innerText = "Hint generated. Please try again!";
+            }
+        } catch(e) { 
+            let hintBoxes = document.querySelectorAll('.ai-hint-box');
+            hintBoxes.forEach(box => box.innerHTML = `<br><span style="color:var(--primary); font-style:normal;">Please review the text and try again!</span>`);
+            if (document.getElementById('status').innerText.includes("Generating hints")) {
+                 document.getElementById('status').innerText = "Ready for attempt 2.";
+            }
+        }
+    }
+
+    async function saveFinalAnswer(answers) {
+        document.getElementById('status').innerText = "Saving final answer...";
+        const payload = { studentId, lessonId, submissionId, targetTopic, prompt: "Multiple Choice Questions", text: answers.join('\n'), score2: "Completed", taskType: taskTypeParam, type: "assessment" };
+        
+        try {
+            await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+            
+            for (let i = 1; i <= mcQuestionCount; i++) {
+                let fbDiv = document.getElementById(`feedback_q${i}`);
+                if (fbDiv) {
+                    let expl = answerExplanations[i] ? answerExplanations[i] : "";
+                    let correctLetter = correctAnswers[i] || "";
+                    
+                    let explanationHTML = `
+                    <div style="margin-top:15px; padding-top:15px; border-top:1px solid #ccc;">
+                        <strong style="color:var(--secondary); font-size:1.1em;">Correct Answer: ${correctLetter}</strong><br>
+                        <span style="display:inline-block; margin-top:5px; color:var(--primary);">${expl}</span>
+                    </div>`;
+                    
+                    fbDiv.innerHTML += explanationHTML;
+                }
+            }
+            
+            document.getElementById('status').innerText = "Task Complete!";
+        } catch(e) { document.getElementById('status').innerText = "Error saving answer."; }
+    }
+
+    async function submitWriting() {
+        const text1 = document.getElementById('textResponse').value;
+        const text2 = document.getElementById('textResponse2') ? document.getElementById('textResponse2').value : "";
+        if (!text1) { alert("Please type something before submitting."); return; }
+        
+        let btn = document.getElementById('submitWritingBtn');
+        btn.disabled = true;
+        document.getElementById('status').innerText = "Submitting to AI Tutor...";
+        
+        const payload = { studentId, lessonId, submissionId, targetTopic, prompt: currentPrompt, text: text1, text2: text2, taskType: taskTypeParam, type: "assessment" };
+        
+        try {
+            const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+            const result = await response.json();
+            
+            let fbBox = document.getElementById('writingFeedback');
+            fbBox.innerHTML = `<strong style="font-size:1.2em;">Overall AI Score: ${result.score !== undefined ? result.score : "N/A"}/5</strong><br><br>${parseMarkdown(result.reply)}`;
+            fbBox.style.display = "block";
+            
+            if (result.score === "N/A") {
+                btn.innerText = "Retry Grading";
+                btn.disabled = false;
+                document.getElementById('status').innerText = "AI is busy. You can retry.";
+            } else {
+                if (result.vocab && result.vocab !== "?") {
+                    document.getElementById('write_vocabScore').innerText = result.vocab;
+                    document.getElementById('write_syntaxScore').innerText = result.syntax;
+                    document.getElementById('write_orgScore').innerText = result.org;
+                    document.getElementById('write_varietyScore').innerText = result.variety;
+                    document.getElementById('write_RubricTable').style.display = "table";
+                }
+                document.getElementById('status').innerText = "Task Complete!";
+            }
+        } catch(e) { 
+            document.getElementById('status').innerText = "Error submitting.";
+            btn.innerText = "Retry Grading";
+            btn.disabled = false;
+        }
+    }
+
+    async function submitVocab() {
+        const def = document.getElementById('defInput').value;
+        const sent = document.getElementById('sentInput').value;
+        if (!def || !sent) { alert("Please fill out at least your personal definition and sentence."); return; }
+        
+        document.getElementById('submitVocabBtn').disabled = true;
+        document.getElementById('status').innerText = "Submitting Vocabulary to AI Tutor...";
+        
+        const payload = { studentId, lessonId, submissionId, vocabId: currentVocabId, taskType: "vocab", personalDef: def, personalSent: sent, example: document.getElementById('exampleInput').value, nonExample: document.getElementById('nonExampleInput').value, type: "assessment" };
+        
+        try {
+            const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+            const result = await response.json();
+            let fbBox = document.getElementById('vocabFeedback');
+            fbBox.innerHTML = `<strong>Feedback:</strong><br>${parseMarkdown(result.reply)}`;
+            fbBox.style.display = "block";
+            document.getElementById('status').innerText = "Task Complete!";
+        } catch(e) { document.getElementById('status').innerText = "Error submitting."; }
+    }
+
+    // --- RECOVERED AUDIO RECORDING FUNCTIONS ---
+    async function toggleRecording() {
+        let btn = document.getElementById('recordBtn');
+        if (isRecording) {
+            isRecording = false;
+            btn.classList.remove("recording");
+            btn.innerText = "🎤 Start Recording";
+            document.getElementById('status').innerText = "Processing audio...";
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                mediaRecorder.stop();
+            }
+            if (recognition) recognition.stop();
+        } else {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                finalTranscript = "";
+
+                mediaRecorder.addEventListener("dataavailable", event => {
+                    audioChunks.push(event.data);
+                });
+
+                mediaRecorder.addEventListener("stop", () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.readAsDataURL(audioBlob);
+                    reader.onloadend = () => {
+                        const base64Audio = reader.result.split(',')[1];
+                        submitAudioTask(finalTranscript, base64Audio, 'audio/webm');
+                    };
+                });
+
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (SpeechRecognition) {
+                    recognition = new SpeechRecognition();
+                    recognition.continuous = true;
+                    recognition.interimResults = true;
+                    recognition.onresult = (event) => {
+                        let interim = "";
+                        for (let i = event.resultIndex; i < event.results.length; ++i) {
+                            if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript + " ";
+                            else interim += event.results[i][0].transcript;
+                        }
+                    };
+                    recognition.start();
+                } else {
+                    finalTranscript = "Speech recognition not supported in this browser.";
+                }
+
+                mediaRecorder.start();
+                isRecording = true;
+                btn.classList.add("recording");
+                btn.innerText = "⏹️ Stop Recording";
+                document.getElementById('status').innerText = "Recording...";
+
+            } catch (err) {
+                alert("Microphone access is required for this task.");
+            }
+        }
+    }
+
+    async function submitAudioTask(transcript, audioBase64, mimeType) {
+        document.getElementById('status').innerText = "AI is analyzing your speech & uploading file...";
+        let btn = document.getElementById('recordBtn');
+        btn.disabled = true;
+
+        const payload = { studentId, lessonId, submissionId, targetTopic, prompt: currentPrompt, text: transcript || "No speech detected.", audioBase64: audioBase64, mimeType: mimeType, taskType: "speaking", type: "assessment" };
+
+        try {
+            const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+            const result = await response.json();
+            
+            let fbBox = document.getElementById('speakingFeedback');
+            fbBox.innerHTML = `<strong style="font-size:1.2em;">Overall AI Score: ${result.score !== undefined ? result.score : "N/A"}/5</strong><br><br>${parseMarkdown(result.reply)}`;
+            fbBox.style.display = "block";
+            
+            if (result.score === "N/A") {
+                btn.innerText = "Retry Grading";
+                btn.disabled = false;
+                document.getElementById('status').innerText = "AI is busy. You can retry.";
+            } else {
+                if (result.vocab && result.vocab !== "?") {
+                    document.getElementById('speak_vocabScore').innerText = result.vocab;
+                    document.getElementById('speak_syntaxScore').innerText = result.syntax;
+                    document.getElementById('speak_orgScore').innerText = result.org;
+                    document.getElementById('speak_varietyScore').innerText = result.variety;
+                    document.getElementById('speak_RubricTable').style.display = "table";
+                }
+                document.getElementById('status').innerText = "Task Complete!";
+            }
+        } catch(e) {
+            document.getElementById('status').innerText = "Error submitting audio.";
+            btn.innerText = "Retry Grading";
+            btn.disabled = false;
+        }
+    }
+
+    // THE CRITICAL TRIGGER THAT WAKES UP THE APP
+    window.onload = () => {
+        loadData();
+    };
+
 </script>
 </body>
 </html>
