@@ -169,12 +169,6 @@
     let attemptCount = 0;
     let mcQuestionCount = 0;
     
-    let isRecording = false;
-    let mediaRecorder;
-    let audioChunks = [];
-    let recognition;
-    let finalTranscript = "";
-    
     let isSpeaking = false;
     let currentTTSBtn = null;
 
@@ -594,77 +588,14 @@
             fbBox.innerHTML = `<strong>Feedback:</strong><br>${parseMarkdown(result.reply)}`;
             fbBox.style.display = "block";
             document.getElementById('status').innerText = "Task Complete!";
-        } catch(e) { document.getElementById('status').innerText = "Error submitting task."; }
+        } catch(e) { document.getElementById('status').innerText = "Error submitting."; }
     }
 
-    async function toggleRecording() {
-        if (!isRecording) {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
-                finalTranscript = "";
+    // THIS IS THE CRITICAL MISSING PIECE THAT STARTS THE APP
+    window.onload = () => {
+        loadData();
+    };
 
-                if ('webkitSpeechRecognition' in window) {
-                    recognition = new webkitSpeechRecognition();
-                    recognition.continuous = true;
-                    recognition.interimResults = true;
-                    recognition.onresult = (event) => {
-                        let interim = "";
-                        for (let i = event.resultIndex; i < event.results.length; ++i) {
-                            if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript + " ";
-                            else interim += event.results[i][0].transcript;
-                        }
-                        document.getElementById('status').innerText = "Listening: " + interim;
-                    };
-                    recognition.start();
-                }
-
-                mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-                mediaRecorder.onstop = async () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    const reader = new FileReader();
-                    reader.readAsDataURL(audioBlob);
-                    reader.onloadend = () => {
-                        const base64Audio = reader.result.split(',')[1];
-                        submitAudioTask(finalTranscript, base64Audio, 'audio/webm');
-                    };
-                    stream.getTracks().forEach(track => track.stop());
-                };
-
-                mediaRecorder.start();
-                let btn = document.getElementById('recordBtn');
-                btn.classList.add('recording');
-                btn.innerText = "🛑 Stop & Submit";
-                isRecording = true;
-            } catch (err) { alert("Please allow microphone permissions."); }
-        } else {
-            mediaRecorder.stop();
-            if(recognition) recognition.stop();
-            let btn = document.getElementById('recordBtn');
-            btn.classList.remove('recording');
-            btn.innerText = "🎤 Start Recording";
-            isRecording = false;
-        }
-    }
-
-    async function submitAudioTask(transcript, audioBase64, mimeType) {
-        document.getElementById('status').innerText = "AI is analyzing your speech & uploading file...";
-        let btn = document.getElementById('recordBtn');
-        btn.disabled = true;
-
-        const payload = { studentId, lessonId, submissionId, targetTopic, prompt: currentPrompt, text: transcript || "No speech detected.", audioBase64: audioBase64, mimeType: mimeType, taskType: "speaking", type: "assessment" };
-
-        try {
-            const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
-            const result = await response.json();
-            
-            let fbBox = document.getElementById('speakingFeedback');
-            fbBox.innerHTML = `<strong style="font-size:1.2em;">Overall AI Score: ${result.score !== undefined ? result.score : "N/A"}/5</strong><br><br>${parseMarkdown(result.reply)}`;
-            fbBox.style.display = "block";
-            
-            if (result.score === "N/A") {
-                btn.innerText = "Retry Grading";
-                btn.disabled = false;
-                document.getElementById('status').innerText = "AI is busy. You can retry.";
-            } else {
+</script>
+</body>
+</html>
