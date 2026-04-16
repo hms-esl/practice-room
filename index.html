@@ -151,7 +151,8 @@
         document.getElementById('headerTop').style.color = "red";
     };
 
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyvucmpyniDeXtsY8fSIBVU57o0qfXtyIEXEoM0Pf2-sb3JbfnRQtY5ax1tj0C8fCJ9zw/exec";
+    // THE CORRECT, PERMANENT GOOGLE APPS SCRIPT MASTER URL
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwzZLKGeLBpE8lsKC4JditYdVvmrzY3SEl0rtWWlt6lVQ1l13xGr9Nmn5gdMruyhXLl/exec";
     
     const urlParams = new URLSearchParams(window.location.search);
     const studentId = urlParams.get('studentId') || "UnknownStudent";
@@ -338,6 +339,16 @@
             try { data = JSON.parse(textResponse); } 
             catch (jsonErr) { throw new Error("Invalid connection response."); }
             
+            if (data.error) {
+                document.getElementById('headerTop').innerText = "⚠️ LESSON NOT FOUND";
+                document.getElementById('headerTop').style.color = "#C0392B";
+                document.getElementById('headerBottom').innerText = "PLEASE CHECK LESSON ID";
+                document.getElementById('headerBottom').style.color = "#C0392B";
+                document.getElementById('status').innerText = "Google Database says: " + data.error;
+                document.getElementById('status').style.color = "#C0392B";
+                return; // Stop running
+            }
+
             if (data.fullLesson) {
                 const lessonText = data.fullLesson;
                 
@@ -560,4 +571,143 @@
                 btn.innerText = "Retry Grading";
                 btn.disabled = false;
                 document.getElementById('status').innerText = "AI is busy. You can retry.";
+            } else {
+                if (result.vocab && result.vocab !== "?") {
+                    document.getElementById('write_vocabScore').innerText = result.vocab;
+                    document.getElementById('write_syntaxScore').innerText = result.syntax;
+                    document.getElementById('write_orgScore').innerText = result.org;
+                    document.getElementById('write_varietyScore').innerText = result.variety;
+                    document.getElementById('write_RubricTable').style.display = "table";
+                }
+                document.getElementById('status').innerText = "Task Complete!";
             }
+        } catch(e) { 
+            document.getElementById('status').innerText = "Error submitting.";
+            btn.innerText = "Retry Grading";
+            btn.disabled = false;
+        }
+    }
+
+    async function submitVocab() {
+        const def = document.getElementById('defInput').value;
+        const sent = document.getElementById('sentInput').value;
+        if (!def || !sent) { alert("Please fill out at least your personal definition and sentence."); return; }
+        
+        document.getElementById('submitVocabBtn').disabled = true;
+        document.getElementById('status').innerText = "Submitting Vocabulary to AI Tutor...";
+        
+        const payload = { studentId, lessonId, submissionId, vocabId: currentVocabId, taskType: "vocab", personalDef: def, personalSent: sent, example: document.getElementById('exampleInput').value, nonExample: document.getElementById('nonExampleInput').value, type: "assessment" };
+        
+        try {
+            const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+            const result = await response.json();
+            let fbBox = document.getElementById('vocabFeedback');
+            fbBox.innerHTML = `<strong>Feedback:</strong><br>${parseMarkdown(result.reply)}`;
+            fbBox.style.display = "block";
+            document.getElementById('status').innerText = "Task Complete!";
+        } catch(e) { document.getElementById('status').innerText = "Error submitting."; }
+    }
+
+    async function toggleRecording() {
+        let btn = document.getElementById('recordBtn');
+        if (isRecording) {
+            isRecording = false;
+            btn.classList.remove("recording");
+            btn.innerText = "🎤 Start Recording";
+            document.getElementById('status').innerText = "Processing audio...";
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                mediaRecorder.stop();
+            }
+            if (recognition) recognition.stop();
+        } else {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                finalTranscript = "";
+
+                mediaRecorder.addEventListener("dataavailable", event => {
+                    audioChunks.push(event.data);
+                });
+
+                mediaRecorder.addEventListener("stop", () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.readAsDataURL(audioBlob);
+                    reader.onloadend = () => {
+                        const base64Audio = reader.result.split(',')[1];
+                        submitAudioTask(finalTranscript, base64Audio, 'audio/webm');
+                    };
+                });
+
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (SpeechRecognition) {
+                    recognition = new SpeechRecognition();
+                    recognition.continuous = true;
+                    recognition.interimResults = true;
+                    recognition.onresult = (event) => {
+                        let interim = "";
+                        for (let i = event.resultIndex; i < event.results.length; ++i) {
+                            if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript + " ";
+                            else interim += event.results[i][0].transcript;
+                        }
+                    };
+                    recognition.start();
+                } else {
+                    finalTranscript = "Speech recognition not supported in this browser.";
+                }
+
+                mediaRecorder.start();
+                isRecording = true;
+                btn.classList.add("recording");
+                btn.innerText = "⏹️ Stop Recording";
+                document.getElementById('status').innerText = "Recording...";
+
+            } catch (err) {
+                alert("Microphone access is required for this task.");
+            }
+        }
+    }
+
+    async function submitAudioTask(transcript, audioBase64, mimeType) {
+        document.getElementById('status').innerText = "AI is analyzing your speech & uploading file...";
+        let btn = document.getElementById('recordBtn');
+        btn.disabled = true;
+
+        const payload = { studentId, lessonId, submissionId, targetTopic, prompt: currentPrompt, text: transcript || "No speech detected.", audioBase64: audioBase64, mimeType: mimeType, taskType: "speaking", type: "assessment" };
+
+        try {
+            const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+            const result = await response.json();
+            
+            let fbBox = document.getElementById('speakingFeedback');
+            fbBox.innerHTML = `<strong style="font-size:1.2em;">Overall AI Score: ${result.score !== undefined ? result.score : "N/A"}/5</strong><br><br>${parseMarkdown(result.reply)}`;
+            fbBox.style.display = "block";
+            
+            if (result.score === "N/A") {
+                btn.innerText = "Retry Grading";
+                btn.disabled = false;
+                document.getElementById('status').innerText = "AI is busy. You can retry.";
+            } else {
+                if (result.vocab && result.vocab !== "?") {
+                    document.getElementById('speak_vocabScore').innerText = result.vocab;
+                    document.getElementById('speak_syntaxScore').innerText = result.syntax;
+                    document.getElementById('speak_orgScore').innerText = result.org;
+                    document.getElementById('speak_varietyScore').innerText = result.variety;
+                    document.getElementById('speak_RubricTable').style.display = "table";
+                }
+                document.getElementById('status').innerText = "Task Complete!";
+            }
+        } catch(e) {
+            document.getElementById('status').innerText = "Error submitting audio.";
+            btn.innerText = "Retry Grading";
+            btn.disabled = false;
+        }
+    }
+
+    // THE WAKE UP COMMAND
+    loadData();
+    
+</script>
+</body>
+</html>
