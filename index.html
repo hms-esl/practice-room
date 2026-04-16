@@ -151,6 +151,7 @@
         document.getElementById('headerTop').style.color = "red";
     };
 
+    // THE CORRECT, PERMANENT GOOGLE APPS SCRIPT MASTER URL
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyvucmpyniDeXtsY8fSIBVU57o0qfXtyIEXEoM0Pf2-sb3JbfnRQtY5ax1tj0C8fCJ9zw/exec";
     
     const urlParams = new URLSearchParams(window.location.search);
@@ -338,7 +339,6 @@
             try { data = JSON.parse(textResponse); } 
             catch (jsonErr) { throw new Error("Invalid connection response."); }
             
-            // --- THE NEW ERROR HANDLER ---
             if (data.error) {
                 document.getElementById('headerTop').innerText = "⚠️ LESSON NOT FOUND";
                 document.getElementById('headerTop').style.color = "#C0392B";
@@ -348,7 +348,6 @@
                 document.getElementById('status').style.color = "#C0392B";
                 return; // Stop running
             }
-            // -----------------------------
 
             if (data.fullLesson) {
                 const lessonText = data.fullLesson;
