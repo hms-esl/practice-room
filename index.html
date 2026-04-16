@@ -107,7 +107,7 @@
         <div class="prompt-title">Scaffolded Task</div>
         <div class="spacer-line"></div>
         <div class="prompt-text" id="scaffoldedPrompt" style="margin:0;"></div>
-        <textarea id="textResponse" placeholder="Use academic vocabulary to complete the sentences and type the complete sentences in the response box."></textarea>
+        <textarea id="textResponse" placeholder="Use academic vocabulary to complete the sentences and type the complete sentences here in this response box."></textarea>
         <div class="spacer-line"></div>
         
         <div id="openEndedSection">
@@ -145,6 +145,12 @@
 </div>
 
 <script>
+    // --- CRASH DETECTOR --- 
+    window.onerror = function(message, source, lineno, colno, error) {
+        document.getElementById('headerTop').innerText = "CRASH: " + message + " (Line " + lineno + ")";
+        document.getElementById('headerTop').style.color = "red";
+    };
+
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyvucmpyniDeXtsY8fSIBVU57o0qfXtyIEXEoM0Pf2-sb3JbfnRQtY5ax1tj0C8fCJ9zw/exec";
     
     const urlParams = new URLSearchParams(window.location.search);
@@ -172,13 +178,11 @@
     let isSpeaking = false;
     let currentTTSBtn = null;
 
-    // Convert Markdown **bold** to true HTML <strong> (removing asterisks)
     function parseMarkdown(text) {
         if (!text) return "";
         return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>').replace(/<\/?QUESTION>/gi, '');
     }
 
-    // RUBRIC GENERATOR
     function getRubricHTML(prefix) {
         return `
         <table class="student-rubric" id="${prefix}RubricTable" style="display:table;">
@@ -192,7 +196,6 @@
         </table>`;
     }
 
-    // TTS Engine
     function toggleSpeak(text, btnId, defaultText) {
         let btnElement = document.getElementById(btnId);
         
@@ -252,11 +255,10 @@
         toggleSpeak(text, 'btnReadWrite', 'Read Aloud the Writing Prompts');
     }
 
-    // Parse Answer Key into Correct Answers and Explanations
     function extractCorrectAnswers() {
         correctAnswers = {};
         answerExplanations = {};
-        const keyRegex = /(?:^|\n|<br>)\s*(\d+)[.)]\s*([A-D])\s*[-–:]?\s*([\s\S]*?)(?=(?:\n|<br>)\s*\d+[.)]\s*[A-D]|$)/gi;
+        const keyRegex = /(?:^|\n|<br>)\s*(\d+)[\.\)]\s*([A-D])\s*[\-\u2013\:]?\s*([\s\S]*?)(?=(?:\n|<br>)\s*\d+[\.\)]\s*[A-D]|$)/gi;
         let kMatch;
         while ((kMatch = keyRegex.exec(storedAnswerKey)) !== null) {
             correctAnswers[kMatch[1]] = kMatch[2].toUpperCase();
@@ -427,7 +429,6 @@
         }
     }
 
-    // NON-BLOCKING MC SUBMISSION ENGINE
     function submitMC() {
         let answers = [];
         let allCorrect = true;
@@ -439,7 +440,6 @@
             if(fbDiv) { fbDiv.style.display = "none"; fbDiv.innerHTML = ""; }
         }
 
-        // Grade Locally Instantly
         for (let i = 1; i <= mcQuestionCount; i++) {
             let selected = document.querySelector(`input[name="question_${i}"]:checked`);
             if (!selected) { alert(`Please select an answer for Question ${i}.`); return; }
@@ -471,7 +471,6 @@
                 btn.disabled = true;
                 saveFinalAnswer(answers); 
             } else {
-                // UNLOCK UI IMMEDIATELY
                 document.getElementById('status').innerText = "Generating hints... You may retry now or wait for the hint.";
                 btn.innerText = "Submit Again";
                 btn.disabled = false;
@@ -518,7 +517,6 @@
         try {
             await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
             
-            // Inject correct answer and explanation beneath each question
             for (let i = 1; i <= mcQuestionCount; i++) {
                 let fbDiv = document.getElementById(`feedback_q${i}`);
                 if (fbDiv) {
@@ -670,23 +668,3 @@
                 btn.disabled = false;
                 document.getElementById('status').innerText = "AI is busy. You can retry.";
             } else {
-                if (result.vocab && result.vocab !== "?") {
-                    document.getElementById('speak_vocabScore').innerText = result.vocab;
-                    document.getElementById('speak_syntaxScore').innerText = result.syntax;
-                    document.getElementById('speak_orgScore').innerText = result.org;
-                    document.getElementById('speak_varietyScore').innerText = result.variety;
-                    document.getElementById('speak_RubricTable').style.display = "table";
-                }
-                document.getElementById('status').innerText = "Task Complete!";
-            }
-        } catch(e) { 
-            document.getElementById('status').innerText = "Error analyzing audio.";
-            btn.innerText = "Retry Grading";
-            btn.disabled = false;
-        }
-    }
-
-    window.onload = loadData;
-</script>
-</body>
-</html>
