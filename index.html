@@ -11,7 +11,7 @@
         /* Headers and Spacing */
         .task-header { color: var(--secondary); font-size: 1.8em; font-weight: bold; margin: 0; text-transform: uppercase; }
         .lesson-header { font-size: 1.4em; color: var(--primary); font-weight: bold; margin: 0; }
-        .spacer-line { height: 1em; } /* Clean, single line skip */
+        .spacer-line { height: 1em; } 
         
         /* Lesson Context UI */
         #lessonContextBox { background-color: #EBF5FB; padding: 20px; border-radius: 8px; border-left: 5px solid var(--secondary); white-space: pre-wrap; font-size: 1.05em; line-height: 1.6; display: none; margin: 0; }
@@ -153,13 +153,13 @@
     const taskTypeParam = (urlParams.get('taskType') || "speaking").toLowerCase();
     const currentVocabId = urlParams.get('vocabId') || ""; 
     
-    // Generate a unique Submission ID to prevent double-logging on retries
     const submissionId = "sub_" + new Date().getTime();
     
     let currentPrompt = "Tell me about what you learned today.";
     let targetTopic = "";
     let storedAnswerKey = "";
     let correctAnswers = {}; 
+    let answerExplanations = {};
     let attemptCount = 0;
     let mcQuestionCount = 0;
     
@@ -172,7 +172,7 @@
     let isSpeaking = false;
     let currentTTSBtn = null;
 
-    // FORMATTING: Convert Markdown **bold** to true HTML <strong> (removing asterisks)
+    // Convert Markdown **bold** to true HTML <strong> (removing asterisks)
     function parseMarkdown(text) {
         if (!text) return "";
         return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>').replace(/<\/?QUESTION>/gi, '');
@@ -181,7 +181,7 @@
     // RUBRIC GENERATOR
     function getRubricHTML(prefix) {
         return `
-        <table class="student-rubric" id="${prefix}RubricTable">
+        <table class="student-rubric" id="${prefix}RubricTable" style="display:table;">
             <thead><tr><th>ELPA21 Grading Rubric</th><th>Score</th></tr></thead>
             <tbody>
                 <tr><td><strong>Vocabulary:</strong> Using descriptive and accurate academic words.</td><td><span class="score-badge" id="${prefix}vocabScore">-</span> / 5</td></tr>
@@ -192,7 +192,7 @@
         </table>`;
     }
 
-    // TTS: Single Toggle Button Engine
+    // TTS Engine
     function toggleSpeak(text, btnId, defaultText) {
         let btnElement = document.getElementById(btnId);
         
@@ -252,33 +252,30 @@
         toggleSpeak(text, 'btnReadWrite', 'Read Aloud the Writing Prompts');
     }
 
-    // Parse Answer Key
+    // Parse Answer Key into Correct Answers and Explanations
     function extractCorrectAnswers() {
         correctAnswers = {};
-        const keyRegex = /(\d+)[.)]\s*([A-D])/gi;
+        answerExplanations = {};
+        const keyRegex = /(?:^|\n|<br>)\s*(\d+)[.)]\s*([A-D])\s*[-–:]?\s*([\s\S]*?)(?=(?:\n|<br>)\s*\d+[.)]\s*[A-D]|$)/gi;
         let kMatch;
         while ((kMatch = keyRegex.exec(storedAnswerKey)) !== null) {
             correctAnswers[kMatch[1]] = kMatch[2].toUpperCase();
+            answerExplanations[kMatch[1]] = kMatch[3].trim();
         }
     }
 
-    // SMART MC UI Builder (Tag Independent)
     function renderMCUI(rawText, taskType) {
         let container = document.getElementById('mcContainer');
         container.innerHTML = "";
         let html = "";
 
-        // Extract and HIDE Audio Script
         const audioMatch = rawText.match(/<AUDIO_SCRIPT>([\s\S]*?)<\/AUDIO_SCRIPT>/i);
         if (audioMatch) {
             document.getElementById('hiddenAudioScript').innerText = audioMatch[1].trim();
             rawText = rawText.replace(audioMatch[0], ""); 
         }
 
-        // Clean out any leftover literal question tags
         rawText = rawText.replace(/<\/?QUESTION>/gi, '');
-        
-        // Smart parser: Split by numbered list patterns (e.g. "1. " or "2. ")
         let chunks = rawText.split(/(?=\n\d+\.)|(?=^\d+\.)/);
         mcQuestionCount = 0;
 
@@ -290,7 +287,6 @@
             let qText = "";
             let options = [];
 
-            // Separate Question Text from Options (A., B., A), B) etc)
             for (let line of lines) {
                 line = line.trim();
                 if (/^[A-E][\.\)]/i.test(line)) { options.push(line); } 
@@ -321,7 +317,6 @@
     async function loadData() {
         document.getElementById('status').innerText = "Connecting to database...";
         
-        // 1. Set Task Name Headers
         let prettyTaskName = "";
         if (taskTypeParam === 'listening') prettyTaskName = "🎧 LISTENING TASK";
         else if (taskTypeParam === 'comprehension') prettyTaskName = "❓ COMPREHENSION TASK";
@@ -344,13 +339,11 @@
             if (data.fullLesson) {
                 const lessonText = data.fullLesson;
                 
-                // 2. Extract Target Topic
                 if (lessonText.includes("🎯 TITLE:")) {
                     targetTopic = lessonText.split("🎯 TITLE:")[1].split("\n")[0].trim();
                     document.getElementById('targetTopicSpan').innerText = targetTopic;
                 }
                 
-                // 3. Extract Context Box
                 const getSection = (startMarker, endMarker) => {
                     let start = lessonText.indexOf(startMarker);
                     if (start === -1) return null;
@@ -374,7 +367,6 @@
                     document.getElementById('lessonContextBox').style.display = "block";
                 }
                 
-                // 4. Route Task Parsing
                 if (taskTypeParam === "listening" || taskTypeParam === "comprehension") {
                     let endTag = taskTypeParam === "listening" ? "❓ COMPREHENSION TASK" : "🗣️ SPEAKING TASK";
                     let raw = getSection(taskTypeParam === "listening" ? "🎧 LISTENING TASK" : "❓ COMPREHENSION TASK", endTag) || currentPrompt;
@@ -390,17 +382,13 @@
 
                 } else if (taskTypeParam === "speaking") {
                     document.getElementById('speakRubricContainer').innerHTML = getRubricHTML('speak_');
-                    document.getElementById('speak_RubricTable').style.display = "table";
-                    
                     let rawPrompt = getSection("🗣️ SPEAKING TASK", "📝 WRITING TASK") || "Please summarize the lesson out loud.";
                     currentPrompt = rawPrompt.replace("🗣️ SPEAKING TASK", "").trim();
-                    
                     document.getElementById('speakPromptText').innerHTML = parseMarkdown(currentPrompt);
                     document.getElementById('speakingUI').style.display = "block";
 
                 } else if (taskTypeParam === "writing" || taskTypeParam === "reflection") {
                     document.getElementById('writeRubricContainer').innerHTML = getRubricHTML('write_');
-                    document.getElementById('write_RubricTable').style.display = "table";
                     
                     let rawPrompt = taskTypeParam === "writing" ? 
                         (getSection("📝 WRITING TASK", "🤔 REFLECTION TASK") || "Please write about what you learned.") :
@@ -410,7 +398,6 @@
                     
                     let scafPrompt = currentPrompt;
                     let openPrompt = "";
-                    
                     let splitToken = currentPrompt.includes("**Open-Ended Challenge:**") ? "**Open-Ended Challenge:**" : 
                                      (currentPrompt.includes("Open-Ended Challenge:") ? "Open-Ended Challenge:" : null);
                                      
@@ -432,7 +419,6 @@
                 }
             }
         } catch (e) {
-            console.error(e);
             document.getElementById('status').innerText = `⚠️ SYSTEM WARNING: Data could not load. Refresh page.`;
         }
         
@@ -441,8 +427,8 @@
         }
     }
 
-    // MC Submission & Hint Injection
-    async function submitMC() {
+    // NON-BLOCKING MC SUBMISSION ENGINE
+    function submitMC() {
         let answers = [];
         let allCorrect = true;
         let incorrectData = [];
@@ -453,6 +439,7 @@
             if(fbDiv) { fbDiv.style.display = "none"; fbDiv.innerHTML = ""; }
         }
 
+        // Grade Locally Instantly
         for (let i = 1; i <= mcQuestionCount; i++) {
             let selected = document.querySelector(`input[name="question_${i}"]:checked`);
             if (!selected) { alert(`Please select an answer for Question ${i}.`); return; }
@@ -474,48 +461,53 @@
                 if (attemptCount === 0) {
                     fbDiv.innerHTML = `<span style="color:#C0392B;font-weight:bold;">❌ Incorrect.</span> <span class="ai-hint-box" style="color:var(--secondary); font-style:italic;">Loading AI Hint...</span>`;
                 } else {
-                    fbDiv.innerHTML = `<span style="color:#C0392B;font-weight:bold;">❌ Incorrect.</span> <span style="color:var(--primary); font-weight:bold;">The correct answer is ${correctLetter}.</span>`;
+                    fbDiv.innerHTML = `<span style="color:#C0392B;font-weight:bold;">❌ Incorrect.</span>`;
                 }
             }
         }
         
-        btn.disabled = true;
-
         if (attemptCount === 0) {
             if (allCorrect) {
+                btn.disabled = true;
                 saveFinalAnswer(answers); 
             } else {
-                document.getElementById('status').innerText = "Generating hints...";
-                const payload = { studentId, lessonId, submissionId, targetTopic, prompt: currentPrompt, text: incorrectData.join('\n'), taskType: "hint", type: "assessment" };
+                // UNLOCK UI IMMEDIATELY
+                document.getElementById('status').innerText = "Generating hints... You may retry now or wait for the hint.";
+                btn.innerText = "Submit Again";
+                btn.disabled = false;
+                attemptCount++;
                 
-                try {
-                    const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
-                    const result = await response.json();
-                    
-                    let hintText = parseMarkdown(result.reply);
-                    if (hintText.includes("very busy right now") || !hintText) hintText = "Please review the lesson text and try again.";
-
-                    let hintBoxes = document.querySelectorAll('.ai-hint-box');
-                    if (hintBoxes.length > 0) {
-                        hintBoxes[0].innerHTML = `<br><strong style="color:var(--primary)">🤖 AI Hint:</strong> <span style="color:var(--primary); font-style:normal;">${hintText}</span>`;
-                        for(let j=1; j<hintBoxes.length; j++) hintBoxes[j].innerHTML = "<br><em>Review the text and try again.</em>";
-                    }
-                    
-                    document.getElementById('status').innerText = "Hint generated. Please try again!";
-                    btn.innerText = "Submit Again";
-                    btn.disabled = false;
-                    attemptCount++;
-                } catch(e) { 
-                    let hintBoxes = document.querySelectorAll('.ai-hint-box');
-                    hintBoxes.forEach(box => box.innerHTML = `<br><span style="color:var(--primary); font-style:normal;">Please review the text and try again!</span>`);
-                    document.getElementById('status').innerText = "Ready for attempt 2.";
-                    btn.innerText = "Submit Again";
-                    btn.disabled = false;
-                    attemptCount++;
-                }
+                fetchHintAsync(incorrectData.join('\n'));
             }
         } else {
+            btn.disabled = true;
             saveFinalAnswer(answers);
+        }
+    }
+
+    async function fetchHintAsync(incorrectText) {
+        const payload = { studentId, lessonId, submissionId, targetTopic, prompt: currentPrompt, text: incorrectText, taskType: "hint", type: "assessment" };
+        try {
+            const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+            const result = await response.json();
+            
+            let hintText = parseMarkdown(result.reply);
+            if (hintText.includes("very busy right now") || !hintText) hintText = "Please review the lesson text and try again.";
+
+            let hintBoxes = document.querySelectorAll('.ai-hint-box');
+            if (hintBoxes.length > 0) {
+                hintBoxes[0].innerHTML = `<br><strong style="color:var(--primary)">🤖 AI Hint:</strong> <span style="color:var(--primary); font-style:normal;">${hintText}</span>`;
+                for(let j=1; j<hintBoxes.length; j++) hintBoxes[j].innerHTML = "<br><em>Review the text and try again.</em>";
+            }
+            if (document.getElementById('status').innerText.includes("Generating hints")) {
+                 document.getElementById('status').innerText = "Hint generated. Please try again!";
+            }
+        } catch(e) { 
+            let hintBoxes = document.querySelectorAll('.ai-hint-box');
+            hintBoxes.forEach(box => box.innerHTML = `<br><span style="color:var(--primary); font-style:normal;">Please review the text and try again!</span>`);
+            if (document.getElementById('status').innerText.includes("Generating hints")) {
+                 document.getElementById('status').innerText = "Ready for attempt 2.";
+            }
         }
     }
 
@@ -525,9 +517,24 @@
         
         try {
             await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
-            let container = document.getElementById('mcContainer');
-            container.innerHTML += `<div class="ai-feedback-box" style="display:block; margin-top:30px;">
-                <strong style="font-size:1.2em; color:var(--primary);">Answer Key & Explanations:</strong><br><br>${storedAnswerKey}</div>`;
+            
+            // Inject correct answer and explanation beneath each question
+            for (let i = 1; i <= mcQuestionCount; i++) {
+                let fbDiv = document.getElementById(`feedback_q${i}`);
+                if (fbDiv) {
+                    let expl = answerExplanations[i] ? answerExplanations[i] : "";
+                    let correctLetter = correctAnswers[i] || "";
+                    
+                    let explanationHTML = `
+                    <div style="margin-top:15px; padding-top:15px; border-top:1px solid #ccc;">
+                        <strong style="color:var(--secondary); font-size:1.1em;">Correct Answer: ${correctLetter}</strong><br>
+                        <span style="display:inline-block; margin-top:5px; color:var(--primary);">${expl}</span>
+                    </div>`;
+                    
+                    fbDiv.innerHTML += explanationHTML;
+                }
+            }
+            
             document.getElementById('status').innerText = "Task Complete!";
         } catch(e) { document.getElementById('status').innerText = "Error saving answer."; }
     }
@@ -551,7 +558,6 @@
             fbBox.innerHTML = `<strong style="font-size:1.2em;">Overall AI Score: ${result.score !== undefined ? result.score : "N/A"}/5</strong><br><br>${parseMarkdown(result.reply)}`;
             fbBox.style.display = "block";
             
-            // Retry Grading Logic
             if (result.score === "N/A") {
                 btn.innerText = "Retry Grading";
                 btn.disabled = false;
@@ -562,6 +568,7 @@
                     document.getElementById('write_syntaxScore').innerText = result.syntax;
                     document.getElementById('write_orgScore').innerText = result.org;
                     document.getElementById('write_varietyScore').innerText = result.variety;
+                    document.getElementById('write_RubricTable').style.display = "table";
                 }
                 document.getElementById('status').innerText = "Task Complete!";
             }
@@ -615,71 +622,4 @@
                     recognition.start();
                 }
 
-                mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-                mediaRecorder.onstop = async () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    const reader = new FileReader();
-                    reader.readAsDataURL(audioBlob);
-                    reader.onloadend = () => {
-                        const base64Audio = reader.result.split(',')[1];
-                        submitAudioTask(finalTranscript, base64Audio, 'audio/webm');
-                    };
-                    stream.getTracks().forEach(track => track.stop());
-                };
-
-                mediaRecorder.start();
-                let btn = document.getElementById('recordBtn');
-                btn.classList.add('recording');
-                btn.innerText = "🛑 Stop & Submit";
-                isRecording = true;
-            } catch (err) { alert("Please allow microphone permissions."); }
-        } else {
-            mediaRecorder.stop();
-            if(recognition) recognition.stop();
-            let btn = document.getElementById('recordBtn');
-            btn.classList.remove('recording');
-            btn.innerText = "🎤 Start Recording";
-            isRecording = false;
-        }
-    }
-
-    async function submitAudioTask(transcript, audioBase64, mimeType) {
-        document.getElementById('status').innerText = "AI is analyzing your speech & uploading file...";
-        let btn = document.getElementById('recordBtn');
-        btn.disabled = true;
-
-        const payload = { studentId, lessonId, submissionId, targetTopic, prompt: currentPrompt, text: transcript || "No speech detected.", audioBase64: audioBase64, mimeType: mimeType, taskType: "speaking", type: "assessment" };
-
-        try {
-            const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
-            const result = await response.json();
-            
-            let fbBox = document.getElementById('speakingFeedback');
-            fbBox.innerHTML = `<strong style="font-size:1.2em;">Overall AI Score: ${result.score !== undefined ? result.score : "N/A"}/5</strong><br><br>${parseMarkdown(result.reply)}`;
-            fbBox.style.display = "block";
-            
-            // Retry Grading Logic
-            if (result.score === "N/A") {
-                btn.innerText = "Retry Grading";
-                btn.disabled = false;
-                document.getElementById('status').innerText = "AI is busy. You can retry.";
-            } else {
-                if (result.vocab && result.vocab !== "?") {
-                    document.getElementById('speak_vocabScore').innerText = result.vocab;
-                    document.getElementById('speak_syntaxScore').innerText = result.syntax;
-                    document.getElementById('speak_orgScore').innerText = result.org;
-                    document.getElementById('speak_varietyScore').innerText = result.variety;
-                }
-                document.getElementById('status').innerText = "Task Complete!";
-            }
-        } catch(e) { 
-            document.getElementById('status').innerText = "Error analyzing audio.";
-            btn.innerText = "Retry Grading";
-            btn.disabled = false;
-        }
-    }
-
-    window.onload = loadData;
-</script>
-</body>
-</html>
+                mediaRecorder.ondata
