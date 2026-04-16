@@ -169,6 +169,12 @@
     let attemptCount = 0;
     let mcQuestionCount = 0;
     
+    let isRecording = false;
+    let mediaRecorder;
+    let audioChunks = [];
+    let recognition;
+    let finalTranscript = "";
+    
     let isSpeaking = false;
     let currentTTSBtn = null;
 
@@ -554,48 +560,4 @@
                 btn.innerText = "Retry Grading";
                 btn.disabled = false;
                 document.getElementById('status').innerText = "AI is busy. You can retry.";
-            } else {
-                if (result.vocab && result.vocab !== "?") {
-                    document.getElementById('write_vocabScore').innerText = result.vocab;
-                    document.getElementById('write_syntaxScore').innerText = result.syntax;
-                    document.getElementById('write_orgScore').innerText = result.org;
-                    document.getElementById('write_varietyScore').innerText = result.variety;
-                    document.getElementById('write_RubricTable').style.display = "table";
-                }
-                document.getElementById('status').innerText = "Task Complete!";
             }
-        } catch(e) { 
-            document.getElementById('status').innerText = "Error submitting.";
-            btn.innerText = "Retry Grading";
-            btn.disabled = false;
-        }
-    }
-
-    async function submitVocab() {
-        const def = document.getElementById('defInput').value;
-        const sent = document.getElementById('sentInput').value;
-        if (!def || !sent) { alert("Please fill out at least your personal definition and sentence."); return; }
-        
-        document.getElementById('submitVocabBtn').disabled = true;
-        document.getElementById('status').innerText = "Submitting Vocabulary to AI Tutor...";
-        
-        const payload = { studentId, lessonId, submissionId, vocabId: currentVocabId, taskType: "vocab", personalDef: def, personalSent: sent, example: document.getElementById('exampleInput').value, nonExample: document.getElementById('nonExampleInput').value, type: "assessment" };
-        
-        try {
-            const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
-            const result = await response.json();
-            let fbBox = document.getElementById('vocabFeedback');
-            fbBox.innerHTML = `<strong>Feedback:</strong><br>${parseMarkdown(result.reply)}`;
-            fbBox.style.display = "block";
-            document.getElementById('status').innerText = "Task Complete!";
-        } catch(e) { document.getElementById('status').innerText = "Error submitting."; }
-    }
-
-    // THIS IS THE CRITICAL MISSING PIECE THAT STARTS THE APP
-    window.onload = () => {
-        loadData();
-    };
-
-</script>
-</body>
-</html>
