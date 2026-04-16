@@ -48,7 +48,7 @@
         .ai-feedback-box { margin-top: 25px; padding: 25px; background-color: #E8F8F5; border-left: 5px solid #1ABC9C; border-radius: 8px; display: none; font-size: 1.05em; line-height: 1.6; }
     </style>
 </head>
-<body onload="loadData()">
+<body>
 
 <div id="app-container">
     <div class="task-header" id="headerTop">Loading...</div>
@@ -338,6 +338,18 @@
             try { data = JSON.parse(textResponse); } 
             catch (jsonErr) { throw new Error("Invalid connection response."); }
             
+            // --- THE NEW ERROR HANDLER ---
+            if (data.error) {
+                document.getElementById('headerTop').innerText = "⚠️ LESSON NOT FOUND";
+                document.getElementById('headerTop').style.color = "#C0392B";
+                document.getElementById('headerBottom').innerText = "PLEASE CHECK LESSON ID";
+                document.getElementById('headerBottom').style.color = "#C0392B";
+                document.getElementById('status').innerText = "Google Database says: " + data.error;
+                document.getElementById('status').style.color = "#C0392B";
+                return; // Stop running
+            }
+            // -----------------------------
+
             if (data.fullLesson) {
                 const lessonText = data.fullLesson;
                 
@@ -597,7 +609,6 @@
         } catch(e) { document.getElementById('status').innerText = "Error submitting."; }
     }
 
-    // --- RECOVERED AUDIO RECORDING FUNCTIONS ---
     async function toggleRecording() {
         let btn = document.getElementById('recordBtn');
         if (isRecording) {
@@ -695,6 +706,9 @@
         }
     }
 
+    // THE WAKE UP COMMAND
+    loadData();
+    
 </script>
 </body>
 </html>
