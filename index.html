@@ -9,79 +9,88 @@
         #app-container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 800px; width: 100%; }
         
         /* Headers */
-        h2 { color: var(--secondary); margin-bottom: 20px; border-bottom: 2px solid #ECF0F1; padding-bottom: 10px; }
-        h3.sub-header { color: var(--secondary); margin-top: 30px; border-bottom: 2px solid #ECF0F1; padding-bottom: 10px; }
+        h2.main-header { color: var(--secondary); margin-bottom: 20px; border-bottom: 2px solid #ECF0F1; padding-bottom: 10px; text-transform: uppercase; }
+        h3.sub-header { color: var(--secondary); margin-top: 30px; margin-bottom: 15px; border-bottom: 2px solid #ECF0F1; padding-bottom: 10px; text-transform: uppercase; }
         
         /* Lesson Context UI */
         .lesson-title-box { margin-bottom: 15px; font-size: 1.2em; color: var(--primary); }
         #lessonContextBox { background-color: #EBF5FB; padding: 20px; border-radius: 8px; border-left: 5px solid var(--secondary); margin-bottom: 25px; white-space: pre-wrap; font-size: 1.05em; line-height: 1.6; display: none; }
         
         /* Task Formating */
-        .mc-question { background: white; padding: 15px; border-radius: 8px; border: 1px solid #ECF0F1; margin-bottom: 20px; }
+        .mc-question { background: white; padding: 20px; border-radius: 8px; border: 1px solid #ECF0F1; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
         .mc-option { display: block; margin-bottom: 12px; cursor: pointer; font-size: 1.05em; padding: 8px; border-radius: 5px; transition: background 0.2s; }
         .mc-option:hover { background: #F4F6F6; }
-        .mc-feedback { margin-top: 10px; font-size: 0.95em; padding: 10px; border-radius: 5px; display: none; }
+        .mc-feedback { margin-top: 15px; font-size: 1em; padding: 15px; border-radius: 5px; display: none; line-height: 1.5; }
+        .spacer { height: 40px; }
         
         /* Text to Speech Buttons */
         .tts-controls { margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
-        .tts-btn { background-color: #ECF0F1; color: var(--primary); border: 1px solid #BDC3C7; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 0.95em; display: inline-flex; align-items: center; width: auto; font-weight: bold; transition: 0.2s; }
+        .tts-btn { background-color: #ECF0F1; color: var(--primary); border: 1px solid #BDC3C7; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 0.95em; display: inline-flex; align-items: center; width: auto; font-weight: bold; transition: 0.2s; }
         .tts-btn:hover { background-color: #D5DBDB; }
 
         /* Standard Elements */
-        .instruction { font-size: 1.1em; margin-bottom: 10px; line-height: 1.5; white-space: pre-wrap; }
-        .writing-prompt-box { background: #FDFEFE; padding: 15px; border-radius: 8px; border: 1px solid #ECF0F1; margin-bottom: 10px; }
-        textarea { width: 100%; height: 100px; padding: 15px; border: 1px solid #BDC3C7; border-radius: 8px; font-size: 16px; margin-bottom: 25px; box-sizing: border-box; resize: vertical; }
+        .instruction { font-size: 1.1em; margin-bottom: 10px; line-height: 1.6; white-space: pre-wrap; }
+        .prompt-title { font-weight: bold; font-size: 1.15em; margin-top: 20px; margin-bottom: 5px; color: var(--primary); }
+        textarea { width: 100%; height: 120px; padding: 15px; border: 1px solid #BDC3C7; border-radius: 8px; font-size: 16px; margin-bottom: 25px; box-sizing: border-box; resize: vertical; }
         textarea:focus { outline: none; border-color: var(--secondary); }
-        button.action-btn { background-color: var(--secondary); color: white; border: none; padding: 15px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; width: 100%; transition: background-color 0.3s; font-weight: bold; margin-bottom: 15px; }
+        button.action-btn { background-color: var(--secondary); color: white; border: none; padding: 15px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; width: 100%; transition: background-color 0.3s; font-weight: bold; margin-bottom: 15px; margin-top: 10px; }
         button.action-btn:hover { background-color: #2980B9; }
         button.action-btn:disabled { background-color: #95A5A6; cursor: not-allowed; }
         .recording { background-color: #E74C3C !important; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+        
+        /* Rubric & Feedback Styling */
         #status { text-align: center; font-weight: bold; color: #7F8C8D; margin-top: 15px; min-height: 20px; }
-        #feedback-box { margin-top: 25px; padding: 20px; background-color: #E8F8F5; border-left: 5px solid #1ABC9C; border-radius: 4px; display: none; }
-        .rubric-scores { margin-top: 15px; display: flex; flex-direction: column; gap: 8px; font-size: 0.9rem; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #ddd; }
-        .score-row { display: flex; justify-content: space-between; }
-        .score-val { font-weight: bold; color: var(--primary); }
+        #feedback-box { margin-top: 25px; padding: 25px; background-color: #E8F8F5; border-left: 5px solid #1ABC9C; border-radius: 8px; display: none; }
+        .student-rubric { width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 15px; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .student-rubric th, .student-rubric td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ECF0F1; }
+        .student-rubric th { background-color: var(--secondary); color: white; font-weight: bold; }
+        .student-rubric tr:last-child td { border-bottom: none; }
+        .score-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.9em; background: #EAFAF1; color: #27AE60; }
     </style>
 </head>
 <body>
 
 <div id="app-container">
-    <h2 id="taskHeader">Loading Lesson...</h2>
+    <h2 class="main-header" id="taskHeaderTop">Loading Lesson...</h2>
     
     <div class="lesson-title-box">
         <strong>Today's Lesson: <span id="targetTopicSpan"></span></strong>
     </div>
 
     <div class="tts-controls" id="lessonTTS" style="display:none;">
-        <button class="tts-btn" id="btnReadLesson" onclick="toggleSpeak(document.getElementById('lessonContextBox').innerText, this, '🔊 Read Lesson')">🔊 Read Lesson</button>
+        <button class="tts-btn" id="btnReadLesson" onclick="toggleSpeak(document.getElementById('lessonContextBox').innerText, 'btnReadLesson', '🔊 Read Lesson')">🔊 Read Lesson</button>
     </div>
 
     <div id="lessonContextBox"></div>
 
-    <h3 class="sub-header" id="taskSubHeader">Your Task</h3>
+    <h3 class="sub-header" id="taskHeaderBottom">Your Task</h3>
 
-    <div id="hiddenAudioScript" style="display:none;"></div>
-    
     <div class="tts-controls" id="taskTTS" style="display:none;">
-        <button class="tts-btn" id="btnReadTask" onclick="speakTask(this)">🔊 Read Task</button>
+        <button class="tts-btn" id="btnReadTask" onclick="speakTask()">🔊 Read Task</button>
     </div>
 
     <div class="tts-controls" id="listeningTTS" style="display:none;">
-        <button class="tts-btn" id="btnListenPrompt" onclick="toggleSpeak(document.getElementById('hiddenAudioScript').innerText, this, '🔊 Listen to Prompt')">🔊 Listen to Prompt</button>
-        <button class="tts-btn" id="btnReadQuestions" onclick="toggleSpeak(document.getElementById('mcUI').innerText, this, '🔊 Read Questions & Answers')">🔊 Read Questions & Answers</button>
+        <button class="tts-btn" id="btnListenPrompt" onclick="toggleSpeak(document.getElementById('hiddenAudioScript').innerText, 'btnListenPrompt', '🔊 Listen to Prompt')">🔊 Listen to Prompt</button>
+        <button class="tts-btn" id="btnReadQuestions" onclick="toggleSpeak(document.getElementById('mcUI').innerText, 'btnReadQuestions', '🔊 Read Questions & Choices')">🔊 Read Questions & Choices</button>
     </div>
 
-    <div class="instruction" id="promptDisplay">Please wait while we load your practice task.</div>
+    <div id="hiddenAudioScript" style="display:none;"></div>
+
+    <div class="instruction" id="promptDisplay" style="display:none;"></div>
 
     <div id="writingUI" style="display:none;">
-        <p style="font-weight:bold; margin-bottom: 5px; font-size:1.1em;">Scaffolded Task:</p>
-        <div id="scaffoldedPrompt" class="instruction writing-prompt-box"></div>
-        <textarea id="textResponse" placeholder="Type your scaffolded response here..."></textarea>
+        <div id="scaffoldedSection">
+            <div class="prompt-title">Scaffolded Task:</div>
+            <div id="scaffoldedPrompt" class="instruction"></div>
+            <textarea id="textResponse" placeholder="Type your scaffolded response here..."></textarea>
+        </div>
         
-        <p style="font-weight:bold; margin-bottom: 5px; font-size:1.1em;">Open-Ended Challenge:</p>
-        <div id="openEndedPrompt" class="instruction writing-prompt-box"></div>
-        <textarea id="textResponse2" placeholder="Type your open-ended response here..."></textarea>
+        <div id="openEndedSection" style="display:none;">
+            <div class="prompt-title">Open-Ended Challenge:</div>
+            <div id="openEndedPrompt" class="instruction"></div>
+            <textarea id="textResponse2" placeholder="Type your open-ended response here..."></textarea>
+        </div>
         
         <button class="action-btn" id="submitWritingBtn" onclick="submitWriting()">📤 Submit Task</button>
     </div>
@@ -94,13 +103,13 @@
         </div>
 
     <div id="vocabUI" style="display:none;">
-        <p style="font-weight:bold; margin-bottom: 5px;">Personal Definition:</p>
+        <div class="prompt-title">Personal Definition:</div>
         <textarea id="defInput" placeholder="Define the word in your own words..."></textarea>
-        <p style="font-weight:bold; margin-bottom: 5px;">Personal Sentence:</p>
+        <div class="prompt-title">Personal Sentence:</div>
         <textarea id="sentInput" placeholder="Use the word in a sentence..."></textarea>
-        <p style="font-weight:bold; margin-bottom: 5px;">Example:</p>
+        <div class="prompt-title">Example:</div>
         <textarea id="exampleInput" placeholder="Give an example..."></textarea>
-        <p style="font-weight:bold; margin-bottom: 5px;">Non-Example:</p>
+        <div class="prompt-title">Non-Example:</div>
         <textarea id="nonExampleInput" placeholder="Give a non-example or opposite..."></textarea>
         <button class="action-btn" id="submitVocabBtn" onclick="submitVocab()">📤 Submit Vocab Task</button>
     </div>
@@ -108,20 +117,38 @@
     <div id="status"></div>
 
     <div id="feedback-box">
-        <strong id="scoreHeader">Overall AI Score: <span id="scoreDisplay">-</span>/5</strong>
+        <strong style="font-size:1.2em; color:var(--primary);" id="scoreHeader">Overall AI Score: <span id="scoreDisplay">-</span>/5</strong>
+        
         <div id="rubric-breakdown" style="display: none;">
-            <div class="rubric-scores">
-                <div class="score-row"><span>📚 <strong>Vocabulary</strong></span> <span class="score-val"><span id="vocabScore">-</span>/5</span></div>
-                <div class="score-row"><span>🏗️ <strong>Syntax & Grammar</strong></span> <span class="score-val"><span id="syntaxScore">-</span>/5</span></div>
-                <div class="score-row"><span>🗂️ <strong>Organization</strong></span> <span class="score-val"><span id="orgScore">-</span>/5</span></div>
-                <div class="score-row"><span>🔄 <strong>Sentence Variety</strong></span> <span class="score-val"><span id="varietyScore">-</span>/5</span></div>
-            </div>
+            <table class="student-rubric">
+                <thead>
+                    <tr>
+                        <th>Language Skill (ELPA21 Focus)</th>
+                        <th>Score</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Vocabulary:</strong> Using descriptive and accurate academic words.</td>
+                        <td><span class="score-badge" id="vocabScore">-</span> / 5</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Syntax & Grammar:</strong> Building clear and correct sentences.</td>
+                        <td><span class="score-badge" id="syntaxScore">-</span> / 5</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Organization:</strong> Connecting ideas logically.</td>
+                        <td><span class="score-badge" id="orgScore">-</span> / 5</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Sentence Variety:</strong> Using a mix of short and complex sentences.</td>
+                        <td><span class="score-badge" id="varietyScore">-</span> / 5</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
-        <p id="replyDisplay" style="margin-top: 15px; line-height: 1.6;"></p>
-        <div id="rubric-display-container" style="display:none; margin-top:20px; text-align: center;">
-            <p style="font-size:0.85rem; color:#666; margin-bottom: 5px;"><strong>Your Grading Rubric:</strong></p>
-            <img id="dynamicRubric" src="" alt="ELPA21 Grading Rubric" style="max-width:100%; border:1px solid #ccc; border-radius:5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-        </div>
+        
+        <p id="replyDisplay" style="margin-top: 15px; line-height: 1.6; font-size:1.05em;"></p>
     </div>
 </div>
 
@@ -137,7 +164,7 @@
     let currentPrompt = "Tell me about what you learned today.";
     let targetTopic = "";
     let storedAnswerKey = "";
-    let correctAnswers = {}; // Stores correct letters per question
+    let correctAnswers = {}; 
     let attemptCount = 0;
     
     let isRecording = false;
@@ -146,7 +173,6 @@
     let recognition;
     let finalTranscript = "";
     
-    // TTS Variables
     let isSpeaking = false;
     let currentTTSBtn = null;
 
@@ -157,8 +183,10 @@
     }
 
     // TTS: Single Toggle Button Engine
-    function toggleSpeak(text, btnElement, defaultText) {
-        if (isSpeaking && currentTTSBtn === btnElement) {
+    function toggleSpeak(text, btnId, defaultText) {
+        let btnElement = document.getElementById(btnId);
+        
+        if (isSpeaking && currentTTSBtn === btnId) {
             window.speechSynthesis.cancel();
             btnElement.innerHTML = defaultText;
             isSpeaking = false;
@@ -166,8 +194,11 @@
             return;
         }
         
-        window.speechSynthesis.cancel(); // Stop any other speech
-        if (currentTTSBtn) currentTTSBtn.innerHTML = currentTTSBtn.dataset.defaultText;
+        window.speechSynthesis.cancel(); 
+        if (currentTTSBtn) {
+            let oldBtn = document.getElementById(currentTTSBtn);
+            if(oldBtn) oldBtn.innerHTML = oldBtn.dataset.defaultText;
+        }
         
         let cleanText = text.replace(/<[^>]+>/g, '').replace(/\*/g, ''); 
         const utterance = new SpeechSynthesisUtterance(cleanText);
@@ -179,7 +210,7 @@
         };
         
         btnElement.dataset.defaultText = defaultText;
-        currentTTSBtn = btnElement;
+        currentTTSBtn = btnId;
         btnElement.innerHTML = "⏹️ Stop Reading";
         isSpeaking = true;
         
@@ -187,14 +218,16 @@
     }
 
     // TTS: Aggregate task elements
-    function speakTask(btnElement) {
+    function speakTask() {
         let textToRead = "";
         if (taskTypeParam === 'writing' || taskTypeParam === 'reflection') {
-            textToRead = document.getElementById('scaffoldedPrompt').innerText + " " + document.getElementById('openEndedPrompt').innerText;
+            let scaf = document.getElementById('scaffoldedPrompt').innerText;
+            let open = document.getElementById('openEndedPrompt').innerText;
+            textToRead = scaf + " " + open;
         } else {
             textToRead = document.getElementById('promptDisplay').innerText;
         }
-        toggleSpeak(textToRead, btnElement, '🔊 Read Task');
+        toggleSpeak(textToRead, 'btnReadTask', '🔊 Read Task');
     }
 
     // Parse Answer Key
@@ -218,6 +251,11 @@
         if (audioMatch) {
             document.getElementById('hiddenAudioScript').innerText = audioMatch[1].trim();
             rawText = rawText.replace(audioMatch[0], ""); 
+        }
+
+        // Add physical space between hidden prompt controls and questions
+        if (taskType === "listening") {
+            html += `<div class="spacer"></div>`;
         }
 
         // Extract Questions
@@ -252,11 +290,13 @@
         container.style.display = "block";
         document.getElementById('promptDisplay').style.display = "none"; 
         
-        if (taskType === "listening") {
-            document.getElementById('listeningTTS').style.display = "flex";
-        } else if (taskType === "comprehension") {
-            // Comprehension has no read aloud
+        // Hide ALL TTS buttons for reading comprehension
+        if (taskType === "comprehension") {
+            document.getElementById('lessonTTS').style.display = "none";
             document.getElementById('taskTTS').style.display = "none";
+            document.getElementById('listeningTTS').style.display = "none";
+        } else if (taskType === "listening") {
+            document.getElementById('listeningTTS').style.display = "flex";
         } else {
             document.getElementById('taskTTS').style.display = "flex";
         }
@@ -265,9 +305,10 @@
     async function loadData() {
         document.getElementById('status').innerText = "Connecting to database...";
         
+        // Setup Headers
         const prettyTaskName = taskTypeParam.charAt(0).toUpperCase() + taskTypeParam.slice(1) + " Task";
-        document.getElementById('taskHeader').innerText = prettyTaskName;
-        document.getElementById('taskSubHeader').innerText = prettyTaskName;
+        document.getElementById('taskHeaderTop').innerText = prettyTaskName;
+        document.getElementById('taskHeaderBottom').innerText = prettyTaskName;
 
         try {
             const fetchUrl = `${SCRIPT_URL}?lessonId=${encodeURIComponent(lessonId)}`;
@@ -303,7 +344,9 @@
                     }
                     document.getElementById('lessonContextBox').innerHTML = parseMarkdown(contextText);
                     document.getElementById('lessonContextBox').style.display = "block";
-                    document.getElementById('lessonTTS').style.display = "flex"; 
+                    if (taskTypeParam !== "comprehension") {
+                        document.getElementById('lessonTTS').style.display = "flex"; 
+                    }
                 }
                 
                 // Route Task Parsing
@@ -321,6 +364,7 @@
                 } else if (taskTypeParam === "speaking") {
                     currentPrompt = getSection("🗣️ SPEAKING TASK", "📝 WRITING TASK") || "Please summarize the lesson out loud.";
                     document.getElementById('promptDisplay').innerHTML = parseMarkdown(currentPrompt);
+                    document.getElementById('promptDisplay').style.display = "block";
                     document.getElementById('speakingUI').style.display = "block";
                     document.getElementById('taskTTS').style.display = "flex";
 
@@ -339,32 +383,28 @@
                         let parts = currentPrompt.split(splitToken);
                         scafPrompt = parts[0].replace("**Scaffolded Task:**", "").replace("Scaffolded Task:", "").trim();
                         openPrompt = parts[1].trim();
-                        document.getElementById('textResponse2').style.display = "block";
-                        document.getElementById('openEndedPrompt').style.display = "block";
-                        document.getElementById('openEndedPrompt').previousElementSibling.style.display = "block"; // The Header
+                        document.getElementById('openEndedSection').style.display = "block";
                     } else {
-                        // Reflection task usually doesn't have an open-ended part
-                        document.getElementById('textResponse2').style.display = "none";
-                        document.getElementById('openEndedPrompt').style.display = "none";
-                        document.getElementById('openEndedPrompt').previousElementSibling.style.display = "none";
+                        document.getElementById('openEndedSection').style.display = "none";
                     }
 
                     document.getElementById('scaffoldedPrompt').innerHTML = parseMarkdown(scafPrompt);
-                    document.getElementById('openEndedPrompt').innerHTML = parseMarkdown(openPrompt);
+                    if(openPrompt) document.getElementById('openEndedPrompt').innerHTML = parseMarkdown(openPrompt);
+                    
                     document.getElementById('writingUI').style.display = "block";
                     document.getElementById('taskTTS').style.display = "flex";
-                    document.getElementById('promptDisplay').style.display = "none"; 
 
                 } else if (taskTypeParam === "vocab") {
                     currentPrompt = "Complete the Frayer Model fields below for your vocabulary word.";
                     document.getElementById('promptDisplay').innerHTML = parseMarkdown(currentPrompt);
+                    document.getElementById('promptDisplay').style.display = "block";
                     document.getElementById('vocabUI').style.display = "block";
                     document.getElementById('taskTTS').style.display = "flex";
                 }
             }
         } catch (e) {
             console.error(e);
-            document.getElementById('promptDisplay').innerText = `⚠️ SYSTEM WARNING: Data could not load. Refresh page.`;
+            document.getElementById('status').innerText = `⚠️ SYSTEM WARNING: Data could not load. Refresh page.`;
         }
         
         if (document.getElementById('status').innerText === "Connecting to database...") {
@@ -372,19 +412,17 @@
         }
     }
 
-    // LISTENING & COMPREHENSION HINT/SUBMISSION ENGINE
+    // MC Submission & Hint Injection
     async function submitMC(qCount) {
         let answers = [];
         let allCorrect = true;
         let incorrectData = [];
         
-        // Reset Feedback divs
         for (let i = 1; i <= qCount; i++) {
             let fbDiv = document.getElementById(`feedback_q${i}`);
             if(fbDiv) { fbDiv.style.display = "none"; fbDiv.innerHTML = ""; }
         }
 
-        // Validate and Grade Locally
         for (let i = 1; i <= qCount; i++) {
             let selected = document.querySelector(`input[name="question_${i}"]:checked`);
             if (!selected) { alert(`Please select an answer for Question ${i}.`); return; }
@@ -396,12 +434,12 @@
             fbDiv.style.display = "block";
 
             if (correctLetter && userLetter === correctLetter) {
-                fbDiv.style.backgroundColor = "#EAFAF1"; // Light green
+                fbDiv.style.backgroundColor = "#EAFAF1"; 
                 fbDiv.innerHTML = `<span style="color:#27AE60;font-weight:bold;">✅ Correct!</span>`;
             } else {
                 allCorrect = false;
                 incorrectData.push(`Q${i} Incorrect choice: ${selected.value}`);
-                fbDiv.style.backgroundColor = "#FDEDEC"; // Light red
+                fbDiv.style.backgroundColor = "#FDEDEC"; 
                 
                 if (attemptCount === 0) {
                     fbDiv.innerHTML = `<span style="color:#C0392B;font-weight:bold;">❌ Incorrect.</span> <span class="ai-hint-box" style="color:var(--secondary); font-style:italic;">Loading AI Hint...</span>`;
@@ -415,9 +453,9 @@
 
         if (attemptCount === 0) {
             if (allCorrect) {
-                saveFinalAnswer(answers); // They got a 100% on the first try!
+                saveFinalAnswer(answers); 
             } else {
-                document.getElementById('status').innerText = "AI is evaluating your incorrect answers for hints...";
+                document.getElementById('status').innerText = "Generating hints...";
                 const payload = { studentId, lessonId, targetTopic, prompt: currentPrompt, text: incorrectData.join('\n'), taskType: "hint", type: "assessment" };
                 
                 try {
@@ -425,17 +463,15 @@
                     const result = await response.json();
                     
                     let hintText = parseMarkdown(result.reply);
-                    
-                    // Fallback if AI crashes or times out
-                    if (hintText.includes("very busy right now")) {
-                        hintText = "Please read the lesson and task carefully and try again.";
+                    if (hintText.includes("very busy right now") || !hintText) {
+                        hintText = "Please review the lesson text and try again.";
                     }
 
-                    // Inject hint into the first incorrect question box
+                    // Inject hint into inline question boxes
                     let hintBoxes = document.querySelectorAll('.ai-hint-box');
                     if (hintBoxes.length > 0) {
                         hintBoxes[0].innerHTML = `<br><strong style="color:var(--primary)">🤖 AI Hint:</strong> <span style="color:var(--primary); font-style:normal;">${hintText}</span>`;
-                        for(let j=1; j<hintBoxes.length; j++) hintBoxes[j].innerHTML = "<br><em>See hint above.</em>";
+                        for(let j=1; j<hintBoxes.length; j++) hintBoxes[j].innerHTML = "<br><em>Review the text and try again.</em>";
                     }
                     
                     document.getElementById('status').innerText = "Hint generated. Please try again!";
@@ -444,7 +480,7 @@
                     attemptCount++;
                 } catch(e) { 
                     let hintBoxes = document.querySelectorAll('.ai-hint-box');
-                    hintBoxes.forEach(box => box.innerHTML = `<br><strong style="color:var(--primary)">🤖 AI Hint:</strong> <span style="color:var(--primary); font-style:normal;">Please review the text and try again!</span>`);
+                    hintBoxes.forEach(box => box.innerHTML = `<br><span style="color:var(--primary); font-style:normal;">Please review the text and try again!</span>`);
                     document.getElementById('status').innerText = "Ready for attempt 2.";
                     document.getElementById('submitMCBtn').innerText = "📤 Submit Final Answer";
                     document.getElementById('submitMCBtn').disabled = false;
@@ -452,7 +488,7 @@
                 }
             }
         } else {
-            saveFinalAnswer(answers); // Second attempt, reveal key
+            saveFinalAnswer(answers);
         }
     }
 
@@ -462,9 +498,9 @@
         
         try {
             await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
-            document.getElementById('replyDisplay').innerHTML = `<strong>Final Answer Saved!</strong><br><br><strong style="color:var(--secondary)">Answer Key & Explanations:</strong><br>${storedAnswerKey}`;
             document.getElementById('feedback-box').style.display = "block";
             document.getElementById('scoreHeader').style.display = "none";
+            document.getElementById('replyDisplay').innerHTML = `<strong>Final Answer Saved!</strong><br><br><strong style="color:var(--secondary)">Answer Key & Explanations:</strong><br>${storedAnswerKey}`;
             document.getElementById('status').innerText = "Task Complete!";
         } catch(e) { document.getElementById('status').innerText = "Error saving answer."; }
     }
@@ -567,17 +603,13 @@
         document.getElementById('scoreHeader').style.display = "block"; 
         document.getElementById('scoreDisplay').innerText = result.score !== undefined ? result.score : "N/A";
         
+        // Show HTML Rubric instead of image
         if (result.vocab && result.vocab !== "?") {
             document.getElementById('rubric-breakdown').style.display = "block";
             document.getElementById('vocabScore').innerText = result.vocab;
             document.getElementById('syntaxScore').innerText = result.syntax;
             document.getElementById('orgScore').innerText = result.org;
             document.getElementById('varietyScore').innerText = result.variety;
-        }
-        
-        if (result.rubricUrl) {
-            document.getElementById('dynamicRubric').src = result.rubricUrl;
-            document.getElementById('rubric-display-container').style.display = "block";
         }
         
         document.getElementById('replyDisplay').innerHTML = parseMarkdown(result.reply);
