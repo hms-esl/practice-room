@@ -695,10 +695,10 @@
         }
     }
 
-    // THE CRITICAL TRIGGER THAT WAKES UP THE APP
-    window.onload = () => {
+// FORCE THE APP TO WAKE UP IMMEDIATELY
+    setTimeout(() => {
         loadData();
-    };
+    }, 200);
 
 </script>
 </body>
