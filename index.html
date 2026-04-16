@@ -48,7 +48,7 @@
         .ai-feedback-box { margin-top: 25px; padding: 25px; background-color: #E8F8F5; border-left: 5px solid #1ABC9C; border-radius: 8px; display: none; font-size: 1.05em; line-height: 1.6; }
     </style>
 </head>
-<body>
+<body onload="loadData()">
 
 <div id="app-container">
     <div class="task-header" id="headerTop">Loading...</div>
@@ -694,11 +694,6 @@
             btn.disabled = false;
         }
     }
-
-// FORCE THE APP TO WAKE UP IMMEDIATELY
-    setTimeout(() => {
-        loadData();
-    }, 200);
 
 </script>
 </body>
