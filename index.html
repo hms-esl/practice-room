@@ -160,9 +160,10 @@
     
     const urlParams = new URLSearchParams(window.location.search);
     const studentId = urlParams.get('studentId') || "UnknownStudent";
-    const lessonId = urlParams.get('lessonId') || "UnknownLesson";
+    let lessonId = urlParams.get('lessonId') || "UnknownLesson";
     const taskTypeParam = (urlParams.get('taskType') || "speaking").toLowerCase();
     const currentVocabId = urlParams.get('vocabId') || ""; 
+    const isVocabQuiz = urlParams.get('vocabQuiz') || "false";
     
     const submissionId = "sub_" + new Date().getTime();
     
@@ -336,7 +337,7 @@
         document.getElementById('headerBottom').innerText = prettyTaskName;
 
         try {
-            const fetchUrl = `${SCRIPT_URL}?lessonId=${encodeURIComponent(lessonId)}`;
+            const fetchUrl = `${SCRIPT_URL}?lessonId=${encodeURIComponent(lessonId)}&studentId=${encodeURIComponent(studentId)}&vocabQuiz=${encodeURIComponent(isVocabQuiz)}`;
             const response = await fetch(fetchUrl, { redirect: "follow" });
             const textResponse = await response.text();
             let data;
@@ -346,7 +347,7 @@
             if (data.error) {
                 document.getElementById('headerTop').innerText = "⚠️ LESSON NOT FOUND";
                 document.getElementById('headerTop').style.color = "#C0392B";
-                document.getElementById('headerBottom').innerText = "PLEASE CHECK LESSON ID";
+                document.getElementById('headerBottom').innerText = "PLEASE CHECK YOUR LINK";
                 document.getElementById('headerBottom').style.color = "#C0392B";
                 document.getElementById('status').innerText = "Google Database says: " + data.error;
                 document.getElementById('status').style.color = "#C0392B";
@@ -355,6 +356,11 @@
 
             if (data.fullLesson) {
                 const lessonText = data.fullLesson;
+                
+                // --- V3 INJECTION: IF BACKEND GENERATED A QUIZ, ADOPT THE SECRET LESSON ID ---
+                if (data.newLessonId) {
+                    lessonId = data.newLessonId; 
+                }
                 
                 if (lessonText.includes("🎯 TITLE:")) {
                     targetTopic = lessonText.split("🎯 TITLE:")[1].split("\n")[0].trim();
