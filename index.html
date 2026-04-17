@@ -46,6 +46,9 @@
         .student-rubric tr:last-child td { border-bottom: none; }
         .score-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.9em; background: #EAFAF1; color: #27AE60; }
         .ai-feedback-box { margin-top: 25px; padding: 25px; background-color: #E8F8F5; border-left: 5px solid #1ABC9C; border-radius: 8px; display: none; font-size: 1.05em; line-height: 1.6; }
+        
+        /* Live Transcript Display */
+        #liveTranscript { margin-top: 15px; padding: 15px; background-color: #F8F9F9; border: 1px dashed #BDC3C7; border-radius: 8px; font-style: italic; color: #34495E; min-height: 24px; display: none; }
     </style>
 </head>
 <body>
@@ -94,6 +97,7 @@
         <div class="spacer-line"></div>
         
         <button class="action-btn centered-btn" id="recordBtn" onclick="toggleRecording()">🎤 Start Recording</button>
+        <div id="liveTranscript">Waiting for speech...</div>
         <div id="speakingFeedback" class="ai-feedback-box"></div>
     </div>
 
@@ -346,7 +350,7 @@
                 document.getElementById('headerBottom').style.color = "#C0392B";
                 document.getElementById('status').innerText = "Google Database says: " + data.error;
                 document.getElementById('status').style.color = "#C0392B";
-                return; // Stop running
+                return; 
             }
 
             if (data.fullLesson) {
@@ -610,6 +614,8 @@
 
     async function toggleRecording() {
         let btn = document.getElementById('recordBtn');
+        let transcriptDisplay = document.getElementById('liveTranscript');
+        
         if (isRecording) {
             isRecording = false;
             btn.classList.remove("recording");
@@ -625,6 +631,9 @@
                 mediaRecorder = new MediaRecorder(stream);
                 audioChunks = [];
                 finalTranscript = "";
+                
+                transcriptDisplay.style.display = "block";
+                transcriptDisplay.innerText = "Listening... Speak now.";
 
                 mediaRecorder.addEventListener("dataavailable", event => {
                     audioChunks.push(event.data);
@@ -651,10 +660,16 @@
                             if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript + " ";
                             else interim += event.results[i][0].transcript;
                         }
+                        transcriptDisplay.innerText = finalTranscript + interim; // LIVE FEEDBACK
+                    };
+                    recognition.onerror = (event) => {
+                        console.error("Speech recognition error:", event.error);
+                        transcriptDisplay.innerText = "Error picking up speech: " + event.error;
                     };
                     recognition.start();
                 } else {
-                    finalTranscript = "Speech recognition not supported in this browser.";
+                    finalTranscript = "Speech recognition not supported in this browser. Only audio file will be sent.";
+                    transcriptDisplay.innerText = finalTranscript;
                 }
 
                 mediaRecorder.start();
@@ -664,7 +679,9 @@
                 document.getElementById('status').innerText = "Recording...";
 
             } catch (err) {
-                alert("Microphone access is required for this task.");
+                alert("Microphone access is required. Please check your browser settings and try again.");
+                transcriptDisplay.innerText = "Microphone access blocked.";
+                transcriptDisplay.style.display = "block";
             }
         }
     }
