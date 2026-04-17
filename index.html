@@ -127,7 +127,7 @@
     </div>
 
     <div id="vocabUI" style="display:none;">
-        <div class="prompt-title" style="margin-top:0;">Vocabulary Word Tasks</div>
+        <div class="prompt-title" style="margin-top:0;">Vocabulary Word Tasks (Frayer Model)</div>
         <div class="spacer-line"></div>
         <div class="prompt-title">Personal Definition:</div>
         <textarea id="defInput" placeholder="Define the word in your own words..."></textarea>
@@ -174,6 +174,7 @@
     let answerExplanations = {};
     let attemptCount = 0;
     let mcQuestionCount = 0;
+    let firstTryGrade = null; // Stores their initial grade percentage
     
     let isRecording = false;
     let mediaRecorder;
@@ -330,7 +331,8 @@
         else if (taskTypeParam === 'comprehension') prettyTaskName = "❓ COMPREHENSION TASK";
         else if (taskTypeParam === 'speaking') prettyTaskName = "🗣️ SPEAKING TASK";
         else if (taskTypeParam === 'writing') prettyTaskName = "📝 WRITING TASK";
-        else if (taskTypeParam === 'vocab') prettyTaskName = "🧠 VOCABULARY TASK";
+        else if (taskTypeParam === 'vocab') prettyTaskName = "🧠 VOCABULARY PRACTICE";
+        else if (taskTypeParam === 'vocab quiz') prettyTaskName = "🏆 VOCABULARY QUIZ"; // New header!
         else prettyTaskName = taskTypeParam.toUpperCase() + " TASK";
 
         document.getElementById('headerTop').innerText = prettyTaskName;
@@ -357,7 +359,6 @@
             if (data.fullLesson) {
                 const lessonText = data.fullLesson;
                 
-                // --- V3 INJECTION: IF BACKEND GENERATED A QUIZ, ADOPT THE SECRET LESSON ID ---
                 if (data.newLessonId) {
                     lessonId = data.newLessonId; 
                 }
@@ -390,7 +391,8 @@
                     document.getElementById('lessonContextBox').style.display = "block";
                 }
                 
-                if (taskTypeParam === "listening" || taskTypeParam === "comprehension") {
+                // --- ROUTE TO THE MULTIPLE CHOICE UI ---
+                if (taskTypeParam === "listening" || taskTypeParam === "comprehension" || taskTypeParam === "vocab quiz") {
                     let endTag = taskTypeParam === "listening" ? "❓ COMPREHENSION TASK" : "🗣️ SPEAKING TASK";
                     let raw = getSection(taskTypeParam === "listening" ? "🎧 LISTENING TASK" : "❓ COMPREHENSION TASK", endTag) || currentPrompt;
                     
@@ -403,6 +405,7 @@
                     
                     renderMCUI(currentPrompt, taskTypeParam);
 
+                // --- ROUTE TO SPEAKING UI ---
                 } else if (taskTypeParam === "speaking") {
                     document.getElementById('speakRubricContainer').innerHTML = getRubricHTML('speak_');
                     let rawPrompt = getSection("🗣️ SPEAKING TASK", "📝 WRITING TASK") || "Please summarize the lesson out loud.";
@@ -410,6 +413,7 @@
                     document.getElementById('speakPromptText').innerHTML = parseMarkdown(currentPrompt);
                     document.getElementById('speakingUI').style.display = "block";
 
+                // --- ROUTE TO WRITING UI ---
                 } else if (taskTypeParam === "writing" || taskTypeParam === "reflection") {
                     document.getElementById('writeRubricContainer').innerHTML = getRubricHTML('write_');
                     
@@ -437,6 +441,7 @@
                     if(openPrompt) document.getElementById('openEndedPrompt').innerHTML = parseMarkdown(openPrompt);
                     document.getElementById('writingUI').style.display = "block";
 
+                // --- ROUTE TO THE FRAYER MODEL PRACTICE ---
                 } else if (taskTypeParam === "vocab") {
                     document.getElementById('vocabUI').style.display = "block";
                 }
@@ -454,6 +459,7 @@
         let answers = [];
         let allCorrect = true;
         let incorrectData = [];
+        let correctCount = 0;
         let btn = document.getElementById('submitMCBtn');
         
         for (let i = 1; i <= mcQuestionCount; i++) {
@@ -474,6 +480,7 @@
             if (correctLetter && userLetter === correctLetter) {
                 fbDiv.style.backgroundColor = "#EAFAF1"; 
                 fbDiv.innerHTML = `<span style="color:#27AE60;font-weight:bold;">✅ Correct!</span>`;
+                correctCount++;
             } else {
                 allCorrect = false;
                 incorrectData.push(`Q${i} Incorrect choice: ${selected.value}`);
@@ -486,8 +493,12 @@
                 }
             }
         }
-        
+
+        // --- CALCULATE GRADE ON FIRST ATTEMPT ---
         if (attemptCount === 0) {
+            let percentage = Math.round((correctCount / mcQuestionCount) * 100);
+            firstTryGrade = `${correctCount}/${mcQuestionCount} (${percentage}%)`;
+            
             if (allCorrect) {
                 btn.disabled = true;
                 saveFinalAnswer(answers); 
@@ -533,7 +544,11 @@
 
     async function saveFinalAnswer(answers) {
         document.getElementById('status').innerText = "Saving final answer...";
-        const payload = { studentId, lessonId, submissionId, targetTopic, prompt: "Multiple Choice Questions", text: answers.join('\n'), score2: "Completed", taskType: taskTypeParam, type: "assessment" };
+        
+        // --- LOG THE FIRST ATTEMPT GRADE INTO APP SHEET ---
+        const scoreToSave = firstTryGrade || "Completed"; 
+        
+        const payload = { studentId, lessonId, submissionId, targetTopic, prompt: "Multiple Choice Questions", text: answers.join('\n'), score2: scoreToSave, taskType: taskTypeParam, type: "assessment" };
         
         try {
             await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
@@ -554,7 +569,7 @@
                 }
             }
             
-            document.getElementById('status').innerText = "Task Complete!";
+            document.getElementById('status').innerText = `Task Complete! Grade: ${scoreToSave}`;
         } catch(e) { document.getElementById('status').innerText = "Error saving answer."; }
     }
 
@@ -655,34 +670,41 @@
                     };
                 });
 
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                if (SpeechRecognition) {
-                    recognition = new SpeechRecognition();
-                    recognition.continuous = true;
-                    recognition.interimResults = true;
-                    recognition.onresult = (event) => {
-                        let interim = "";
-                        for (let i = event.resultIndex; i < event.results.length; ++i) {
-                            if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript + " ";
-                            else interim += event.results[i][0].transcript;
-                        }
-                        transcriptDisplay.innerText = finalTranscript + interim; // LIVE FEEDBACK
-                    };
-                    recognition.onerror = (event) => {
-                        console.error("Speech recognition error:", event.error);
-                        transcriptDisplay.innerText = "Error picking up speech: " + event.error;
-                    };
-                    recognition.start();
-                } else {
-                    finalTranscript = "Speech recognition not supported in this browser. Only audio file will be sent.";
-                    transcriptDisplay.innerText = finalTranscript;
-                }
-
                 mediaRecorder.start();
                 isRecording = true;
                 btn.classList.add("recording");
                 btn.innerText = "⏹️ Stop Recording";
                 document.getElementById('status').innerText = "Recording...";
+
+                setTimeout(() => {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    if (SpeechRecognition) {
+                        recognition = new SpeechRecognition();
+                        recognition.continuous = true;
+                        recognition.interimResults = true;
+                        
+                        recognition.onresult = (event) => {
+                            let interim = "";
+                            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                                if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript + " ";
+                                else interim += event.results[i][0].transcript;
+                            }
+                            transcriptDisplay.innerText = finalTranscript + interim;
+                        };
+                        
+                        recognition.onerror = (event) => {
+                            console.error("Speech recognition error:", event.error);
+                            if (event.error !== 'no-speech') {
+                                transcriptDisplay.innerText = "Live text disabled due to mic conflict. Keep speaking, audio is still recording!";
+                            }
+                        };
+                        
+                        recognition.start();
+                    } else {
+                        finalTranscript = "Speech recognition not supported in this browser. Only audio file will be sent.";
+                        transcriptDisplay.innerText = finalTranscript;
+                    }
+                }, 400);
 
             } catch (err) {
                 alert("Microphone access is required. Please check your browser settings and try again.");
