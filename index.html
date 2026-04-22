@@ -354,15 +354,26 @@
                     document.getElementById('targetTopicSpan').innerText = targetTopic;
                 }
                 
+                // CRITICAL BUG FIX: Smarter getSection extractor that doesn't dump the whole text if missing
                 const getSection = (startMarker, endMarker) => {
                     let start = lessonText.indexOf(startMarker);
                     if (start === -1) return null;
-                    let end = endMarker ? lessonText.indexOf(endMarker, start) : lessonText.length;
-                    if (end === -1) end = lessonText.length;
-                    return lessonText.substring(start, end).trim();
+                    if (endMarker) {
+                        let end = lessonText.indexOf(endMarker, start);
+                        if (end === -1) return null; // Safe fallback: Return null if section is not found
+                        return lessonText.substring(start, end).trim();
+                    } else {
+                        return lessonText.substring(start).trim();
+                    }
                 };
 
-                let contextText = getSection("🎯 OBJECTIVE", "🎧 LISTENING TASK") || getSection("🎯 OBJECTIVE", "🎤 READING PASSAGE") || getSection("🎯 OBJECTIVE", "❓ COMPREHENSION TASK") || getSection("🎯 OBJECTIVE", "🗣️ SPEAKING TASK");
+                // Ensure the Objective box ONLY displays the Objective text
+                let contextText = getSection("🎯 OBJECTIVE", "🎧 LISTENING TASK") || 
+                                  getSection("🎯 OBJECTIVE", "🎤 READING PASSAGE") || 
+                                  getSection("🎯 OBJECTIVE", "❓ COMPREHENSION TASK") || 
+                                  getSection("🎯 OBJECTIVE", "🗣️ SPEAKING TASK") ||
+                                  getSection("🎯 OBJECTIVE", null);
+                                  
                 if (contextText) {
                     if (contextText.includes("📋 STANDARDS") && contextText.includes("📖 ANCHOR")) {
                         let before = contextText.substring(0, contextText.indexOf("📋 STANDARDS"));
@@ -374,11 +385,16 @@
                 }
                 
                 if (taskTypeParam === "diagnostic") {
-                    let passageRaw = getSection("🎤 READING PASSAGE", "❓ COMPREHENSION TASK") || "";
+                    let passageRaw = getSection("🎤 READING PASSAGE", "❓ COMPREHENSION TASK") || 
+                                     getSection("🎤 READING PASSAGE", null) || "";
                     document.getElementById('diagnosticPassage').innerHTML = parseMarkdown(passageRaw.replace("🎤 READING PASSAGE", "").trim());
                     
                     let mcRaw = getSection("❓ COMPREHENSION TASK", null) || "";
-                    if (mcRaw.includes("Answer Key:")) { mcRaw = mcRaw.split("Answer Key:")[0].trim(); }
+                    
+                    // CRITICAL FIX: Cut off ALL text after "Answer Key:" so students never see corrections
+                    if (/Answer Key:/i.test(mcRaw)) { 
+                        mcRaw = mcRaw.split(/Answer Key:/i)[0].trim(); 
+                    }
                     
                     let mcContainer = document.getElementById('diagMcContainer');
                     mcContainer.innerHTML = "";
@@ -389,7 +405,7 @@
                     
                     for (let chunk of chunks) {
                         chunk = chunk.trim();
-                        if (!chunk || chunk.toLowerCase().startsWith('answer key')) continue;
+                        if (!chunk) continue;
                         let lines = chunk.split('\n');
                         let qText = "";
                         let options = [];
