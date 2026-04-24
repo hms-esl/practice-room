@@ -419,15 +419,11 @@
                         contextText = before + "\n" + after;
                     }
                     
-                    // Display the blue box with just the text
-                    document.getElementById('lessonContextBox').innerHTML = `
-                        <div id="lessonContentText">
-                            ${parseMarkdown(contextText)}
-                        </div>
-                    `;
+                    // FIXED: Removed the newlines and indentation inside the template literal
+                    // so white-space: pre-wrap doesn't push the text to the right.
+                    document.getElementById('lessonContextBox').innerHTML = `<div id="lessonContentText">${parseMarkdown(contextText.trim())}</div>`;
                     document.getElementById('lessonContextBox').style.display = "block";
                     
-                    // Show the dedicated full-width button if not comprehension or diagnostic
                     if (taskTypeParam !== "comprehension" && taskTypeParam !== "diagnostic") {
                         document.getElementById('topReadAloudContainer').style.display = "block";
                     }
