@@ -47,7 +47,10 @@
 <body>
 
 <div id="app-container">
-    <div class="task-header" id="headerTop">Loading...</div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <div class="task-header" id="headerTop">Loading...</div>
+        <button onclick="window.close(); alert('Please close this browser tab to return to the dashboard.');" style="background-color: #E74C3C; color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.9em;">🚪 Exit Room</button>
+    </div>
     <div class="spacer-line"></div>
     
     <div class="lesson-header">Today's Lesson: <span id="targetTopicSpan"></span></div>
@@ -188,6 +191,8 @@
     let finalTranscript = "";
     let isSpeaking = false;
     let currentTTSBtn = null;
+    
+    let isReadingTop = false;
 
     function parseMarkdown(text) {
         if (!text) return "";
@@ -205,6 +210,43 @@
                 <tr><td><strong>Sentence Variety:</strong> Using a mix of short and complex sentences.</td><td><span class="score-badge" id="${prefix}varietyScore">-</span> / 5</td></tr>
             </tbody>
         </table>`;
+    }
+
+    // --- TOP LESSON READ ALOUD TOGGLE ---
+    function toggleTopReadAloud() {
+        const btn = document.getElementById('topReadAloudBtn');
+        
+        // If it's already speaking, stop it.
+        if (isReadingTop && window.speechSynthesis.speaking) {
+            window.speechSynthesis.cancel();
+            isReadingTop = false;
+            btn.innerHTML = "🔊 Read Aloud";
+            return;
+        }
+
+        // Cancel any other audio currently playing just in case
+        window.speechSynthesis.cancel();
+
+        // Grab the text from the lesson context (ignoring the button's own text)
+        const contextBox = document.getElementById('lessonContentText');
+        if (!contextBox) return;
+        
+        let textToRead = contextBox.innerText; 
+        // Remove markdown formatting characters for smoother reading
+        textToRead = textToRead.replace(/\*/g, '');
+        
+        const utterance = new SpeechSynthesisUtterance(textToRead);
+        
+        // When it finishes naturally, reset the button
+        utterance.onend = function() {
+            isReadingTop = false;
+            if(btn) btn.innerHTML = "🔊 Read Aloud";
+        };
+        
+        // Start reading and change button state
+        isReadingTop = true;
+        btn.innerHTML = "⏹ Stop Reading";
+        window.speechSynthesis.speak(utterance);
     }
 
     function toggleSpeak(text, btnId, defaultText) {
@@ -354,20 +396,18 @@
                     document.getElementById('targetTopicSpan').innerText = targetTopic;
                 }
                 
-                // CRITICAL BUG FIX: Smarter getSection extractor that doesn't dump the whole text if missing
                 const getSection = (startMarker, endMarker) => {
                     let start = lessonText.indexOf(startMarker);
                     if (start === -1) return null;
                     if (endMarker) {
                         let end = lessonText.indexOf(endMarker, start);
-                        if (end === -1) return null; // Safe fallback: Return null if section is not found
+                        if (end === -1) return null; 
                         return lessonText.substring(start, end).trim();
                     } else {
                         return lessonText.substring(start).trim();
                     }
                 };
 
-                // Ensure the Objective box ONLY displays the Objective text
                 let contextText = getSection("🎯 OBJECTIVE", "🎧 LISTENING TASK") || 
                                   getSection("🎯 OBJECTIVE", "🎤 READING PASSAGE") || 
                                   getSection("🎯 OBJECTIVE", "❓ COMPREHENSION TASK") || 
@@ -380,7 +420,23 @@
                         let after = contextText.substring(contextText.indexOf("📖 ANCHOR"));
                         contextText = before + "\n" + after;
                     }
-                    document.getElementById('lessonContextBox').innerHTML = parseMarkdown(contextText);
+                    
+                    let topReadAloudBtn = "";
+                    if (taskTypeParam !== "comprehension" && taskTypeParam !== "diagnostic") {
+                        topReadAloudBtn = `
+                            <button id="topReadAloudBtn" onclick="toggleTopReadAloud()" 
+                                style="margin-bottom: 15px; padding: 8px 15px; background-color: var(--secondary); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                🔊 Read Aloud
+                            </button>
+                        `;
+                    }
+
+                    document.getElementById('lessonContextBox').innerHTML = `
+                        ${topReadAloudBtn}
+                        <div id="lessonContentText">
+                            ${parseMarkdown(contextText)}
+                        </div>
+                    `;
                     document.getElementById('lessonContextBox').style.display = "block";
                 }
                 
@@ -391,7 +447,6 @@
                     
                     let mcRaw = getSection("❓ COMPREHENSION TASK", null) || "";
                     
-                    // CRITICAL FIX: Cut off ALL text after "Answer Key:" so students never see corrections
                     if (/Answer Key:/i.test(mcRaw)) { 
                         mcRaw = mcRaw.split(/Answer Key:/i)[0].trim(); 
                     }
