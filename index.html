@@ -56,6 +56,10 @@
     <div class="lesson-header">Today's Lesson: <span id="targetTopicSpan"></span></div>
     <div class="spacer-line"></div>
 
+    <div id="topReadAloudContainer" style="display: none; margin-bottom: 15px;">
+        <button id="topReadAloudBtn" class="action-btn full-width-btn" onclick="toggleTopReadAloud()">🔊 Read Aloud</button>
+    </div>
+
     <div id="lessonContextBox"></div>
     <div class="spacer-line"></div>
 
@@ -169,7 +173,7 @@
     const urlParams = new URLSearchParams(window.location.search);
     const studentId = urlParams.get('studentId') || "UnknownStudent";
     let lessonId = urlParams.get('lessonId') || "UnknownLesson";
-    const taskTypeParam = (urlParams.get('taskType') || "speaking").toLowerCase();
+    const taskTypeParam = (urlParams.get('taskType') || "speaking").toLowerCase().trim();
     const currentVocabId = urlParams.get('vocabId') || ""; 
     const isVocabQuiz = urlParams.get('vocabQuiz') || "false";
     
@@ -216,7 +220,6 @@
     function toggleTopReadAloud() {
         const btn = document.getElementById('topReadAloudBtn');
         
-        // If it's already speaking, stop it.
         if (isReadingTop && window.speechSynthesis.speaking) {
             window.speechSynthesis.cancel();
             isReadingTop = false;
@@ -224,26 +227,21 @@
             return;
         }
 
-        // Cancel any other audio currently playing just in case
         window.speechSynthesis.cancel();
 
-        // Grab the text from the lesson context (ignoring the button's own text)
         const contextBox = document.getElementById('lessonContentText');
         if (!contextBox) return;
         
         let textToRead = contextBox.innerText; 
-        // Remove markdown formatting characters for smoother reading
         textToRead = textToRead.replace(/\*/g, '');
         
         const utterance = new SpeechSynthesisUtterance(textToRead);
         
-        // When it finishes naturally, reset the button
         utterance.onend = function() {
             isReadingTop = false;
             if(btn) btn.innerHTML = "🔊 Read Aloud";
         };
         
-        // Start reading and change button state
         isReadingTop = true;
         btn.innerHTML = "⏹ Stop Reading";
         window.speechSynthesis.speak(utterance);
@@ -421,23 +419,18 @@
                         contextText = before + "\n" + after;
                     }
                     
-                    let topReadAloudBtn = "";
-                    if (taskTypeParam !== "comprehension" && taskTypeParam !== "diagnostic") {
-                        topReadAloudBtn = `
-                            <button id="topReadAloudBtn" onclick="toggleTopReadAloud()" 
-                                style="margin-bottom: 15px; padding: 8px 15px; background-color: var(--secondary); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                                🔊 Read Aloud
-                            </button>
-                        `;
-                    }
-
+                    // Display the blue box with just the text
                     document.getElementById('lessonContextBox').innerHTML = `
-                        ${topReadAloudBtn}
                         <div id="lessonContentText">
                             ${parseMarkdown(contextText)}
                         </div>
                     `;
                     document.getElementById('lessonContextBox').style.display = "block";
+                    
+                    // Show the dedicated full-width button if not comprehension or diagnostic
+                    if (taskTypeParam !== "comprehension" && taskTypeParam !== "diagnostic") {
+                        document.getElementById('topReadAloudContainer').style.display = "block";
+                    }
                 }
                 
                 if (taskTypeParam === "diagnostic") {
