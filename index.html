@@ -458,8 +458,8 @@
                         }
                         if (options.length > 0) {
                             mcQuestionCount++;
-                            // FIX: Escaping quotes and using dataset to avoid SyntaxError
-                            let safeAttrText = qText.trim().replace(/"/g, '&quot;');
+                            // Prevent SyntaxError by escaping quotes and using data attribute
+                            let safeAttrText = qText.trim().replace(/"/g, '&quot;').replace(/'/g, "\\'");
                             
                             html += `<div class="mc-question" id="diagBlock_${mcQuestionCount}">
                                         <div style="display:flex; align-items:flex-start;">
@@ -649,8 +649,6 @@
             btn.disabled = false;
         }
     }
-
-    // --- End Diagnostic Functions ---
 
     function submitMC() {
         let answers = [];
