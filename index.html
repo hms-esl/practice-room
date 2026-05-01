@@ -549,9 +549,7 @@
             document.getElementById('status').innerText = "Audio captured! Please answer the questions below.";
             
             if (recognition) recognition.stop();
-            // BUFFER FIX: Force final data capture before stopping
             if (mediaRecorder && mediaRecorder.state !== "inactive") { 
-                mediaRecorder.requestData(); 
                 mediaRecorder.stop(); 
             }
             
@@ -569,19 +567,21 @@
                 mediaRecorder.addEventListener("dataavailable", event => { 
                     if (event.data && event.data.size > 0) audioChunks.push(event.data); 
                 });
+                
                 mediaRecorder.addEventListener("stop", () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const mimeType = mediaRecorder.mimeType || 'audio/webm';
+                    const audioBlob = new Blob(audioChunks, { type: mimeType });
                     if (audioBlob.size > 0) {
                         const reader = new FileReader();
                         reader.readAsDataURL(audioBlob);
                         reader.onloadend = () => {
                             diagAudioBase64 = reader.result.split(',')[1];
-                            diagMimeType = 'audio/webm';
+                            diagMimeType = mimeType;
                         };
                     }
                 });
 
-                mediaRecorder.start(200); // Record in intervals to prevent empty blobs
+                mediaRecorder.start(); // Safe start for all browsers
                 isRecording = true;
                 btn.classList.add("recording");
                 btn.innerText = "⏹️ Stop Reading";
@@ -833,9 +833,7 @@
             document.getElementById('status').innerText = "Processing audio...";
             
             if (recognition) recognition.stop();
-            // BUFFER FIX: Force final data capture before stopping
             if (mediaRecorder && mediaRecorder.state !== "inactive") {
-                mediaRecorder.requestData();
                 mediaRecorder.stop(); 
             }
         } else {
@@ -853,22 +851,23 @@
                 });
                 
                 mediaRecorder.addEventListener("stop", () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const mimeType = mediaRecorder.mimeType || 'audio/webm';
+                    const audioBlob = new Blob(audioChunks, { type: mimeType });
                     
                     if (audioBlob.size > 0) {
                         const reader = new FileReader();
                         reader.readAsDataURL(audioBlob);
                         reader.onloadend = () => {
                             const base64Audio = reader.result.split(',')[1];
-                            submitAudioTask(finalTranscript, base64Audio, 'audio/webm');
+                            submitAudioTask(finalTranscript, base64Audio, mimeType);
                         };
                     } else {
                         // Prevent the system from crashing if the blob is entirely empty
-                        submitAudioTask(finalTranscript, "", "audio/webm");
+                        submitAudioTask(finalTranscript, "", mimeType);
                     }
                 });
 
-                mediaRecorder.start(200); // Record in intervals to prevent empty blobs
+                mediaRecorder.start(); // Safe start for all browsers
                 isRecording = true;
                 btn.classList.add("recording");
                 btn.innerText = "⏹️ Stop Recording";
