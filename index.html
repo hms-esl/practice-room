@@ -541,7 +541,6 @@
     async function toggleDiagRecording() {
         let btn = document.getElementById('diagRecordBtn');
         let transcriptDisplay = document.getElementById('diagLiveTranscript');
-        
         if (isRecording) {
             isRecording = false;
             btn.classList.remove("recording");
@@ -550,9 +549,9 @@
             document.getElementById('status').innerText = "Audio captured! Please answer the questions below.";
             
             if (recognition) recognition.stop();
-            // Force final chunks to process before stopping
-            if (mediaRecorder && mediaRecorder.state !== "inactive") {
-                mediaRecorder.requestData();
+            // BUFFER FIX: Force final data capture before stopping
+            if (mediaRecorder && mediaRecorder.state !== "inactive") { 
+                mediaRecorder.requestData(); 
                 mediaRecorder.stop(); 
             }
             
@@ -570,7 +569,6 @@
                 mediaRecorder.addEventListener("dataavailable", event => { 
                     if (event.data && event.data.size > 0) audioChunks.push(event.data); 
                 });
-                
                 mediaRecorder.addEventListener("stop", () => {
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                     if (audioBlob.size > 0) {
@@ -583,7 +581,7 @@
                     }
                 });
 
-                mediaRecorder.start(200); // Record in 200ms chunks to prevent data loss
+                mediaRecorder.start(200); // Record in intervals to prevent empty blobs
                 isRecording = true;
                 btn.classList.add("recording");
                 btn.innerText = "⏹️ Stop Reading";
@@ -636,7 +634,7 @@
             studentId, 
             lessonId, 
             submissionId, 
-            topic: targetTopic, 
+            targetTopic: targetTopic, 
             prompt: currentPrompt, 
             text: finalTranscript, 
             mcAnswers: mcAnswers.join('\n'),
@@ -718,7 +716,7 @@
     }
 
     async function fetchHintAsync(incorrectText) {
-        const payload = { studentId, lessonId, submissionId, topic: targetTopic, prompt: currentPrompt, text: incorrectText, taskType: "hint", type: "assessment" };
+        const payload = { studentId, lessonId, submissionId, targetTopic: targetTopic, prompt: currentPrompt, text: incorrectText, taskType: "hint", type: "assessment" };
         try {
             const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
             const result = await response.json();
@@ -745,7 +743,7 @@
     async function saveFinalAnswer(answers) {
         document.getElementById('status').innerText = "Saving final answer...";
         const scoreToSave = firstTryGrade || "Completed"; 
-        const payload = { studentId, lessonId, submissionId, topic: targetTopic, prompt: "Multiple Choice Questions", text: answers.join('\n'), score2: scoreToSave, taskType: taskTypeParam, type: "assessment" };
+        const payload = { studentId, lessonId, submissionId, targetTopic: targetTopic, prompt: "Multiple Choice Questions", text: answers.join('\n'), score2: scoreToSave, taskType: taskTypeParam, type: "assessment" };
         
         try {
             await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
@@ -775,7 +773,7 @@
         btn.disabled = true;
         document.getElementById('status').innerText = "Submitting to AI Tutor...";
         
-        const payload = { studentId, lessonId, submissionId, topic: targetTopic, prompt: currentPrompt, text: text1, text2: text2, taskType: taskTypeParam, type: "assessment" };
+        const payload = { studentId, lessonId, submissionId, targetTopic: targetTopic, prompt: currentPrompt, text: text1, text2: text2, taskType: taskTypeParam, type: "assessment" };
         
         try {
             const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
@@ -813,7 +811,7 @@
         document.getElementById('submitVocabBtn').disabled = true;
         document.getElementById('status').innerText = "Submitting Vocabulary to AI Tutor...";
         
-        const payload = { studentId, lessonId, submissionId, topic: targetTopic, vocabId: currentVocabId, taskType: "vocab", personalDef: def, personalSent: sent, example: document.getElementById('exampleInput').value, nonExample: document.getElementById('nonExampleInput').value, type: "assessment" };
+        const payload = { studentId, lessonId, submissionId, targetTopic: targetTopic, vocabId: currentVocabId, taskType: "vocab", personalDef: def, personalSent: sent, example: document.getElementById('exampleInput').value, nonExample: document.getElementById('nonExampleInput').value, type: "assessment" };
         
         try {
             const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
@@ -835,7 +833,7 @@
             document.getElementById('status').innerText = "Processing audio...";
             
             if (recognition) recognition.stop();
-            // Force final chunks to process before stopping
+            // BUFFER FIX: Force final data capture before stopping
             if (mediaRecorder && mediaRecorder.state !== "inactive") {
                 mediaRecorder.requestData();
                 mediaRecorder.stop(); 
@@ -851,29 +849,26 @@
                 transcriptDisplay.innerText = "Listening... Speak now.";
 
                 mediaRecorder.addEventListener("dataavailable", event => { 
-                    if (event.data && event.data.size > 0) {
-                        audioChunks.push(event.data); 
-                    }
+                    if (event.data && event.data.size > 0) audioChunks.push(event.data); 
                 });
                 
                 mediaRecorder.addEventListener("stop", () => {
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                     
-                    if (audioBlob.size === 0) {
-                         alert("Audio recording failed. The file is empty.");
-                         document.getElementById('status').innerText = "Recording failed.";
-                         return;
+                    if (audioBlob.size > 0) {
+                        const reader = new FileReader();
+                        reader.readAsDataURL(audioBlob);
+                        reader.onloadend = () => {
+                            const base64Audio = reader.result.split(',')[1];
+                            submitAudioTask(finalTranscript, base64Audio, 'audio/webm');
+                        };
+                    } else {
+                        // Prevent the system from crashing if the blob is entirely empty
+                        submitAudioTask(finalTranscript, "", "audio/webm");
                     }
-
-                    const reader = new FileReader();
-                    reader.readAsDataURL(audioBlob);
-                    reader.onloadend = () => {
-                        const base64Audio = reader.result.split(',')[1];
-                        submitAudioTask(finalTranscript, base64Audio, 'audio/webm');
-                    };
                 });
 
-                mediaRecorder.start(200); // Record in 200ms chunks to prevent data loss
+                mediaRecorder.start(200); // Record in intervals to prevent empty blobs
                 isRecording = true;
                 btn.classList.add("recording");
                 btn.innerText = "⏹️ Stop Recording";
@@ -893,13 +888,6 @@
                                 else interim += event.results[i][0].transcript;
                             }
                             transcriptDisplay.innerText = finalTranscript + interim;
-                        };
-                        
-                        recognition.onerror = (event) => {
-                            console.error("Speech recognition error:", event.error);
-                            if (event.error !== 'no-speech') {
-                                transcriptDisplay.innerText = "Live text disabled due to mic conflict. Keep speaking, audio is still recording!";
-                            }
                         };
                         recognition.start();
                     } else {
@@ -924,7 +912,7 @@
             studentId, 
             lessonId, 
             submissionId, 
-            topic: targetTopic, 
+            targetTopic: targetTopic, 
             prompt: currentPrompt, 
             text: transcript || "No speech detected.", 
             audioBase64: audioBase64, 
