@@ -458,7 +458,6 @@
                         }
                         if (options.length > 0) {
                             mcQuestionCount++;
-                            // Prevent SyntaxError by escaping quotes and using data attribute
                             let safeAttrText = qText.trim().replace(/"/g, '&quot;').replace(/'/g, "\\'");
                             
                             html += `<div class="mc-question" id="diagBlock_${mcQuestionCount}">
@@ -542,14 +541,20 @@
     async function toggleDiagRecording() {
         let btn = document.getElementById('diagRecordBtn');
         let transcriptDisplay = document.getElementById('diagLiveTranscript');
+        
         if (isRecording) {
             isRecording = false;
             btn.classList.remove("recording");
             btn.innerText = "✅ Reading Complete";
             btn.disabled = true;
             document.getElementById('status').innerText = "Audio captured! Please answer the questions below.";
-            if (mediaRecorder && mediaRecorder.state !== "inactive") { mediaRecorder.stop(); }
+            
             if (recognition) recognition.stop();
+            // Force final chunks to process before stopping
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                mediaRecorder.requestData();
+                mediaRecorder.stop(); 
+            }
             
             document.getElementById('diagnosticMCSection').style.display = "block";
         } else {
@@ -562,18 +567,23 @@
                 transcriptDisplay.style.display = "block";
                 transcriptDisplay.innerText = "Listening... Read out loud now.";
 
-                mediaRecorder.addEventListener("dataavailable", event => { audioChunks.push(event.data); });
+                mediaRecorder.addEventListener("dataavailable", event => { 
+                    if (event.data && event.data.size > 0) audioChunks.push(event.data); 
+                });
+                
                 mediaRecorder.addEventListener("stop", () => {
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    const reader = new FileReader();
-                    reader.readAsDataURL(audioBlob);
-                    reader.onloadend = () => {
-                        diagAudioBase64 = reader.result.split(',')[1];
-                        diagMimeType = 'audio/webm';
-                    };
+                    if (audioBlob.size > 0) {
+                        const reader = new FileReader();
+                        reader.readAsDataURL(audioBlob);
+                        reader.onloadend = () => {
+                            diagAudioBase64 = reader.result.split(',')[1];
+                            diagMimeType = 'audio/webm';
+                        };
+                    }
                 });
 
-                mediaRecorder.start();
+                mediaRecorder.start(200); // Record in 200ms chunks to prevent data loss
                 isRecording = true;
                 btn.classList.add("recording");
                 btn.innerText = "⏹️ Stop Reading";
@@ -823,8 +833,13 @@
             btn.classList.remove("recording");
             btn.innerText = "🎤 Start Recording";
             document.getElementById('status').innerText = "Processing audio...";
-            if (mediaRecorder && mediaRecorder.state !== "inactive") { mediaRecorder.stop(); }
+            
             if (recognition) recognition.stop();
+            // Force final chunks to process before stopping
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                mediaRecorder.requestData();
+                mediaRecorder.stop(); 
+            }
         } else {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -835,9 +850,21 @@
                 transcriptDisplay.style.display = "block";
                 transcriptDisplay.innerText = "Listening... Speak now.";
 
-                mediaRecorder.addEventListener("dataavailable", event => { audioChunks.push(event.data); });
+                mediaRecorder.addEventListener("dataavailable", event => { 
+                    if (event.data && event.data.size > 0) {
+                        audioChunks.push(event.data); 
+                    }
+                });
+                
                 mediaRecorder.addEventListener("stop", () => {
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    
+                    if (audioBlob.size === 0) {
+                         alert("Audio recording failed. The file is empty.");
+                         document.getElementById('status').innerText = "Recording failed.";
+                         return;
+                    }
+
                     const reader = new FileReader();
                     reader.readAsDataURL(audioBlob);
                     reader.onloadend = () => {
@@ -846,7 +873,7 @@
                     };
                 });
 
-                mediaRecorder.start();
+                mediaRecorder.start(200); // Record in 200ms chunks to prevent data loss
                 isRecording = true;
                 btn.classList.add("recording");
                 btn.innerText = "⏹️ Stop Recording";
@@ -891,9 +918,21 @@
     async function submitAudioTask(transcript, audioBase64, mimeType) {
         document.getElementById('status').innerText = "AI is analyzing your speech & uploading file...";
         let btn = document.getElementById('recordBtn');
-        btn.disabled = true;
+        if(btn) btn.disabled = true;
 
-        const payload = { studentId, lessonId, submissionId, topic: targetTopic, prompt: currentPrompt, text: transcript || "No speech detected.", audioBase64: audioBase64, mimeType: mimeType, taskType: "speaking", type: "assessment" };
+        const payload = { 
+            studentId, 
+            lessonId, 
+            submissionId, 
+            topic: targetTopic, 
+            prompt: currentPrompt, 
+            text: transcript || "No speech detected.", 
+            audioBase64: audioBase64, 
+            mimeType: mimeType, 
+            taskType: "speaking", 
+            type: "assessment" 
+        };
+        
         try {
             const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
             const result = await response.json();
@@ -903,8 +942,7 @@
             fbBox.style.display = "block";
             
             if (result.score === "N/A") {
-                btn.innerText = "Retry Grading";
-                btn.disabled = false;
+                if(btn) { btn.innerText = "Retry Grading"; btn.disabled = false; }
                 document.getElementById('status').innerText = "AI is busy. You can retry.";
             } else {
                 if (result.vocab && result.vocab !== "?") {
@@ -918,8 +956,7 @@
             }
         } catch(e) {
             document.getElementById('status').innerText = "Error submitting audio.";
-            btn.innerText = "Retry Grading";
-            btn.disabled = false;
+            if(btn) { btn.innerText = "Retry Grading"; btn.disabled = false; }
         }
     }
 
