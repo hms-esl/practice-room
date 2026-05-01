@@ -458,15 +458,20 @@
                         }
                         if (options.length > 0) {
                             mcQuestionCount++;
-                            // Format the question string so it doesn't break the onclick handler
-                            let safeQText = qText.trim().replace(/['"\\]/g, '\\$&').replace(/\n/g, ' ');
+                            // FIX: Escaping quotes and using dataset to avoid SyntaxError
+                            let safeAttrText = qText.trim().replace(/"/g, '&quot;');
                             
                             html += `<div class="mc-question" id="diagBlock_${mcQuestionCount}">
                                         <div style="display:flex; align-items:flex-start;">
-                                            <button id="btnDiagQ${mcQuestionCount}" style="background-color: var(--secondary); color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-right: 15px; font-size: 0.9em; flex-shrink: 0;" onclick="toggleSpeak('${safeQText}', 'btnDiagQ${mcQuestionCount}', '🔊 Listen')">🔊 Listen</button>
+                                            <button id="btnDiagQ${mcQuestionCount}" 
+                                                    class="action-btn"
+                                                    style="background-color: var(--secondary); color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-right: 15px; font-size: 0.9em; flex-shrink: 0; width: auto; min-width: 80px;" 
+                                                    data-qtext="${safeAttrText}"
+                                                    onclick="toggleSpeak(this.dataset.qtext, 'btnDiagQ${mcQuestionCount}', '🔊 Listen')">🔊 Listen</button>
                                             <div class="q-text" style="margin: 0;">${parseMarkdown(qText.trim())}</div>
                                         </div>
                                         <div class="spacer-line"></div>`;
+                            
                             for (let opt of options) {
                                 html += `<label class="mc-option">
                                             <input type="radio" name="diag_question_${mcQuestionCount}" value="${opt.replace(/"/g, '&quot;')}"> 
