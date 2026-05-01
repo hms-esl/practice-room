@@ -419,8 +419,6 @@
                         contextText = before + "\n" + after;
                     }
                     
-                    // FIXED: Removed the newlines and indentation inside the template literal
-                    // so white-space: pre-wrap doesn't push the text to the right.
                     document.getElementById('lessonContextBox').innerHTML = `<div id="lessonContentText">${parseMarkdown(contextText.trim())}</div>`;
                     document.getElementById('lessonContextBox').style.display = "block";
                     
@@ -460,8 +458,14 @@
                         }
                         if (options.length > 0) {
                             mcQuestionCount++;
+                            // Format the question string so it doesn't break the onclick handler
+                            let safeQText = qText.trim().replace(/['"\\]/g, '\\$&').replace(/\n/g, ' ');
+                            
                             html += `<div class="mc-question" id="diagBlock_${mcQuestionCount}">
-                                        <div class="q-text">${parseMarkdown(qText.trim())}</div>
+                                        <div style="display:flex; align-items:flex-start;">
+                                            <button id="btnDiagQ${mcQuestionCount}" style="background-color: var(--secondary); color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-right: 15px; font-size: 0.9em; flex-shrink: 0;" onclick="toggleSpeak('${safeQText}', 'btnDiagQ${mcQuestionCount}', '🔊 Listen')">🔊 Listen</button>
+                                            <div class="q-text" style="margin: 0;">${parseMarkdown(qText.trim())}</div>
+                                        </div>
                                         <div class="spacer-line"></div>`;
                             for (let opt of options) {
                                 html += `<label class="mc-option">
@@ -617,6 +621,7 @@
             studentId, 
             lessonId, 
             submissionId, 
+            topic: targetTopic, 
             prompt: currentPrompt, 
             text: finalTranscript, 
             mcAnswers: mcAnswers.join('\n'),
@@ -700,7 +705,7 @@
     }
 
     async function fetchHintAsync(incorrectText) {
-        const payload = { studentId, lessonId, submissionId, targetTopic, prompt: currentPrompt, text: incorrectText, taskType: "hint", type: "assessment" };
+        const payload = { studentId, lessonId, submissionId, topic: targetTopic, prompt: currentPrompt, text: incorrectText, taskType: "hint", type: "assessment" };
         try {
             const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
             const result = await response.json();
@@ -727,7 +732,7 @@
     async function saveFinalAnswer(answers) {
         document.getElementById('status').innerText = "Saving final answer...";
         const scoreToSave = firstTryGrade || "Completed"; 
-        const payload = { studentId, lessonId, submissionId, targetTopic, prompt: "Multiple Choice Questions", text: answers.join('\n'), score2: scoreToSave, taskType: taskTypeParam, type: "assessment" };
+        const payload = { studentId, lessonId, submissionId, topic: targetTopic, prompt: "Multiple Choice Questions", text: answers.join('\n'), score2: scoreToSave, taskType: taskTypeParam, type: "assessment" };
         
         try {
             await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
@@ -757,7 +762,7 @@
         btn.disabled = true;
         document.getElementById('status').innerText = "Submitting to AI Tutor...";
         
-        const payload = { studentId, lessonId, submissionId, targetTopic, prompt: currentPrompt, text: text1, text2: text2, taskType: taskTypeParam, type: "assessment" };
+        const payload = { studentId, lessonId, submissionId, topic: targetTopic, prompt: currentPrompt, text: text1, text2: text2, taskType: taskTypeParam, type: "assessment" };
         
         try {
             const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
@@ -795,7 +800,7 @@
         document.getElementById('submitVocabBtn').disabled = true;
         document.getElementById('status').innerText = "Submitting Vocabulary to AI Tutor...";
         
-        const payload = { studentId, lessonId, submissionId, vocabId: currentVocabId, taskType: "vocab", personalDef: def, personalSent: sent, example: document.getElementById('exampleInput').value, nonExample: document.getElementById('nonExampleInput').value, type: "assessment" };
+        const payload = { studentId, lessonId, submissionId, topic: targetTopic, vocabId: currentVocabId, taskType: "vocab", personalDef: def, personalSent: sent, example: document.getElementById('exampleInput').value, nonExample: document.getElementById('nonExampleInput').value, type: "assessment" };
         
         try {
             const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
@@ -885,7 +890,7 @@
         let btn = document.getElementById('recordBtn');
         btn.disabled = true;
 
-        const payload = { studentId, lessonId, submissionId, targetTopic, prompt: currentPrompt, text: transcript || "No speech detected.", audioBase64: audioBase64, mimeType: mimeType, taskType: "speaking", type: "assessment" };
+        const payload = { studentId, lessonId, submissionId, topic: targetTopic, prompt: currentPrompt, text: transcript || "No speech detected.", audioBase64: audioBase64, mimeType: mimeType, taskType: "speaking", type: "assessment" };
         try {
             const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
             const result = await response.json();
