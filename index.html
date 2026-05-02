@@ -46,9 +46,6 @@
         /* SENTENCE ANALYSIS UI STYLES */
         .sa-card { background: #fdfdfd; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 20px; }
         .sa-select { padding: 8px; font-size: 1em; border-radius: 5px; border: 1px solid #ccc; background: white; margin: 0 5px; max-width: 100%; cursor: pointer; }
-        .chunk-btn { background: #ecf0f1; border: 1px solid #bdc3c7; padding: 8px 12px; border-radius: 20px; cursor: pointer; font-size: 1em; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .chunk-btn:hover { background: #d5dbdb; }
-        .chunk-answer-area { background: #f8f9fa; min-height: 60px; padding: 15px; border: 2px dashed #bdc3c7; border-radius: 8px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
     </style>
 </head>
 <body>
@@ -139,7 +136,7 @@
         <div class="spacer-line"></div>
         
         <div id="sentenceAnalysisSection" style="display:none; margin-top:30px; padding-top:20px; border-top: 2px solid #ECF0F1;">
-            <div class="prompt-title" style="color:var(--secondary); font-size:1.4em;">Part 2: Sentence Analysis</div>
+            <div class="prompt-title">Part 2: Sentence Analysis</div>
             <div class="spacer-line"></div>
             <div id="saContainer"></div>
         </div>
@@ -250,7 +247,10 @@
         let textToRead = contextBox.innerText; 
         textToRead = textToRead.replace(/\*/g, '');
         const utterance = new SpeechSynthesisUtterance(textToRead);
-        utterance.onend = function() { isReadingTop = false; if(btn) btn.innerHTML = "🔊 Read Aloud"; };
+        utterance.onend = function() {
+            isReadingTop = false;
+            if(btn) btn.innerHTML = "🔊 Read Aloud";
+        };
         isReadingTop = true;
         btn.innerHTML = "⏹ Stop Reading";
         window.speechSynthesis.speak(utterance);
@@ -374,6 +374,7 @@
         let html = "";
         hasSentenceAnalysis = false;
         
+        // --- Question 1 Parser ---
         let q1Match = promptText.match(/<Q1>([\s\S]*?)<\/Q1>/);
         if (q1Match) {
             hasSentenceAnalysis = true;
@@ -390,15 +391,24 @@
             let sel1 = `<select id="q1_b1" class="sa-select"><option value="">--Select--</option>` + opts1.map(o=>`<option value="${o.replace(/"/g, '&quot;')}">${o}</option>`).join('') + `</select>`;
             let sel2 = `<select id="q1_b2" class="sa-select"><option value="">--Select--</option>` + opts2.map(o=>`<option value="${o.replace(/"/g, '&quot;')}">${o}</option>`).join('') + `</select>`;
             
-            let displayScenario = scenario.replace('[BLANK 1]', sel1).replace('[BLANK 2]', sel2);
+            // Smart Regex to catch [BLANK 1], [Blank 1], or _______ lines
+            let displayScenario = scenario;
+            displayScenario = displayScenario.replace(/\[BLANK\s*1\]|_{3,}/i, sel1);
+            displayScenario = displayScenario.replace(/\[BLANK\s*2\]|_{3,}/i, sel2);
+            
+            // Failsafe if the AI completely forgot to put blanks in the sentence
+            if (!displayScenario.includes('<select')) {
+                displayScenario += `<br><br> ${sel1} &nbsp; ${sel2}`;
+            }
 
             html += `<div class="sa-card">
                 <div class="q-text">1. Logical Linker</div>
-                <div style="line-height:2; font-size:1.1em;">${displayScenario}</div>
+                <div style="line-height:2.2; font-size:1.1em;">${displayScenario}</div>
                 <div id="sa_fb_1" class="mc-feedback"></div>
             </div>`;
         }
 
+        // --- Question 2 Parser ---
         let q2Match = promptText.match(/<Q2>([\s\S]*?)<\/Q2>/);
         if (q2Match) {
             hasSentenceAnalysis = true;
@@ -426,6 +436,7 @@
             </div>`;
         }
 
+        // --- Question 3 Parser (Updated for Text Box UI) ---
         let q3Match = promptText.match(/<Q3>([\s\S]*?)<\/Q3>/);
         if (q3Match) {
             hasSentenceAnalysis = true;
@@ -441,16 +452,15 @@
                 <div class="q-text">3. Build a Better Sentence</div>
                 <p><strong>Base Sentence:</strong> <em>"${base}"</em></p>
                 <p><strong>Goal:</strong> ${goal}</p>
-                <p style="font-size:0.9em; color:#7f8c8d;">Click the chunks below to build the new sentence:</p>
-                <div id="q3_bank" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:15px;">`;
+                <p style="font-size:0.9em; color:#7f8c8d; margin-bottom: 5px;">Use the chunks in this Word Bank to type out your expanded sentence:</p>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:15px; padding: 10px; background: #fdfdfd; border-radius: 8px;">`;
             
             chunks.forEach((chunk) => {
-                html += `<button class="chunk-btn" onclick="moveChunk(this)">${chunk}</button>`;
+                html += `<span style="background: #EBF5FB; border: 1px solid #3498DB; color: #2C3E50; padding: 6px 12px; border-radius: 12px; font-size: 0.95em; font-weight: bold;">${chunk}</span>`;
             });
 
             html += `</div>
-                <div id="q3_answer" class="chunk-answer-area"></div>
-                <input type="hidden" id="q3_final_val" value="">
+                <textarea id="q3_final_val" placeholder="Type your complete, expanded sentence here..." style="height:80px; width:100%; padding:10px; border-radius:8px; border:1px solid #ccc; font-family:inherit;"></textarea>
                 <div id="sa_fb_3" class="mc-feedback"></div>
             </div>`;
         }
@@ -459,24 +469,6 @@
             container.innerHTML = html;
             document.getElementById('sentenceAnalysisSection').style.display = "block";
         }
-    }
-
-    // Interactivity for Q3 Chunks
-    function moveChunk(btn) {
-        let parent = btn.parentElement.id;
-        let bank = document.getElementById('q3_bank');
-        let answerArea = document.getElementById('q3_answer');
-        
-        if (parent === 'q3_bank') {
-            answerArea.appendChild(btn);
-        } else {
-            bank.appendChild(btn);
-        }
-        
-        let chunks = [];
-        answerArea.querySelectorAll('.chunk-btn').forEach(b => chunks.push(b.innerText.trim()));
-        let builtSentence = chunks.join(' ').replace(/\s+([.,!?;:])/g, '$1');
-        document.getElementById('q3_final_val').value = builtSentence;
     }
 
     async function loadData() {
@@ -494,7 +486,7 @@
         document.getElementById('headerBottom').innerText = prettyTaskName;
 
         try {
-            const fetchUrl = `${SCRIPT_URL}?lessonId=${encodeURIComponent(lessonId)}`;
+            const fetchUrl = `${SCRIPT_URL}?lessonId=${encodeURIComponent(lessonId)}&studentId=${encodeURIComponent(studentId)}&taskType=${encodeURIComponent(taskTypeParam)}&vocabQuiz=${encodeURIComponent(isVocabQuiz)}`;
             const response = await fetch(fetchUrl, { redirect: "follow" });
             const textResponse = await response.text();
             let data;
