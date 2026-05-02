@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Practice Room</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        :root { --primary: #2C3E50; --secondary: #3498DB; --bg: #F5F7FA; }
+        :root { --primary: #2C3E50; --secondary: #3498DB; --bg: #F5F7FA; --success: #22c55e; --warning: #f59e0b; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: var(--primary); margin: 0; padding: 20px; display: flex; justify-content: center; }
         #app-container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 800px; width: 100%; }
         
@@ -46,6 +47,27 @@
         /* SENTENCE ANALYSIS UI STYLES */
         .sa-card { background: #fdfdfd; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 20px; }
         .sa-select { padding: 8px; font-size: 1em; border-radius: 5px; border: 1px solid #ccc; background: white; margin: 0 5px; max-width: 100%; cursor: pointer; }
+
+        /* NEW VOCAB DASHBOARD STYLES */
+        .tabs { display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 2px solid #e2e8f0; }
+        .tab { padding: 0.75rem 1.5rem; cursor: pointer; font-weight: 600; color: #64748b; transition: 0.2s; border-bottom: 3px solid transparent; }
+        .tab.active { color: var(--secondary); border-bottom-color: var(--secondary); }
+        .vocab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
+        .vocab-card { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); border: 1px solid #e2e8f0; transition: transform 0.2s; display:flex; flex-direction:column; justify-content:space-between; }
+        .vocab-card:hover { transform: translateY(-4px); }
+        .v-badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; margin-bottom: 0.5rem; text-transform: uppercase; }
+        .badge-learning { background: #dbeafe; color: #1e40af; }
+        .badge-mastered { background: #dcfce7; color: #166534; }
+        .badge-relearn { background: #fef3c7; color: #92400e; }
+        .word-title { font-size: 1.5rem; font-weight: 800; margin: 0.5rem 0; color: #0f172a; }
+        .word-def { font-size: 0.95rem; color: #475569; margin-bottom: 1rem; line-height: 1.5; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
+        .modal { background: white; width: 90%; max-width: 800px; border-radius: 16px; max-height: 90vh; overflow-y: auto; padding: 2rem; position: relative; }
+        .frayer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+        .frayer-box { border: 2px solid #e2e8f0; border-radius: 8px; padding: 1rem; }
+        .frayer-box label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--primary); margin-bottom: 0.5rem; text-transform: uppercase; }
+        .frayer-box textarea { width: 100%; border: none; outline: none; font-size: 1rem; resize: none; background: #f8fafc; padding: 0.5rem; border-radius: 4px; height:80px; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -55,10 +77,10 @@
         <div class="task-header" id="headerTop">Loading...</div>
         <button onclick="window.close(); alert('Please close this browser tab to return to the dashboard.');" style="background-color: #E74C3C; color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.9em;">🚪 Exit Room</button>
     </div>
-    <div class="spacer-line"></div>
+    <div class="spacer-line" id="topSpacer"></div>
     
-    <div class="lesson-header">Today's Lesson: <span id="targetTopicSpan"></span></div>
-    <div class="spacer-line"></div>
+    <div class="lesson-header" id="lessonTitleDiv">Today's Lesson: <span id="targetTopicSpan"></span></div>
+    <div class="spacer-line" id="lessonSpacer"></div>
 
     <div id="topReadAloudContainer" style="display: none; margin-bottom: 15px;">
         <button id="topReadAloudBtn" class="action-btn full-width-btn" onclick="toggleTopReadAloud()">🔊 Read Aloud</button>
@@ -151,26 +173,49 @@
         <div id="writingFeedback" class="ai-feedback-box"></div>
     </div>
 
-    <div id="vocabUI" style="display:none;">
-        <div class="prompt-title" style="margin-top:0;">Vocabulary Word Tasks (Frayer Model)</div>
-        <div class="spacer-line"></div>
-        <div class="prompt-title">Personal Definition:</div>
-        <textarea id="defInput" placeholder="Define the word in your own words..."></textarea>
-        <div class="spacer-line"></div>
-        <div class="prompt-title">Personal Sentence:</div>
-        <textarea id="sentInput" placeholder="Use the word in a sentence..."></textarea>
-        <div class="spacer-line"></div>
-        <div class="prompt-title">Example:</div>
-        <textarea id="exampleInput" placeholder="Give an example..."></textarea>
-        <div class="spacer-line"></div>
-        <div class="prompt-title">Non-Example:</div>
-        <textarea id="nonExampleInput" placeholder="Give a non-example or opposite..."></textarea>
-        <div class="spacer-line"></div>
-        <button class="action-btn centered-btn" id="submitVocabBtn" onclick="submitVocab()">Submit</button>
-        <div id="vocabFeedback" class="ai-feedback-box"></div>
+    <div id="vocabDashboardUI" class="hidden">
+        <div class="tabs" id="mainTabs">
+            <div class="tab active" onclick="switchVocabTab('active')">Active Vocab 📝</div>
+            <div class="tab" onclick="switchVocabTab('mastered')">Mastered Vocab ✅</div>
+        </div>
+        <div id="activeVocabList" class="vocab-grid"></div>
+        <div id="masteredVocabList" class="vocab-grid hidden"></div>
     </div>
 
     <div id="status"></div>
+</div>
+
+<div id="frayerModal" class="modal-overlay">
+    <div class="modal">
+        <button style="position:absolute; right:1rem; top:1rem; background:none; border:none; font-size:1.5rem; cursor:pointer;" onclick="closeFrayerModal()">&times;</button>
+        <h2 id="modalWord" class="word-title" style="font-size: 2rem;"></h2>
+        <p id="modalContext" style="font-style: italic; color: #64748b; margin-bottom: 1.5rem;"></p>
+        
+        <div class="frayer-grid">
+            <div class="frayer-box">
+                <label>In my own words...</label>
+                <textarea id="v_def" placeholder="How would you explain this word to a friend?"></textarea>
+            </div>
+            <div class="frayer-box">
+                <label>Use it in a sentence...</label>
+                <textarea id="v_sent" placeholder="Write a sentence about yourself or your interests."></textarea>
+            </div>
+            <div class="frayer-box">
+                <label>Example (What is it like?)</label>
+                <textarea id="v_ex" placeholder="A picture, a synonym, or an example..."></textarea>
+            </div>
+            <div class="frayer-box">
+                <label>Non-Example (What is it NOT?)</label>
+                <textarea id="v_non" placeholder="The opposite of this word..."></textarea>
+            </div>
+        </div>
+        
+        <div id="frayerFeedback" style="margin-top: 1rem; padding: 1rem; border-radius: 8px; display: none;"></div>
+        
+        <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+            <button class="action-btn centered-btn" id="frayerSubmitBtn" onclick="submitFrayerTask()">Grade My Work</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -185,14 +230,13 @@
     const studentId = urlParams.get('studentId') || "UnknownStudent";
     let lessonId = urlParams.get('lessonId') || "UnknownLesson";
     const taskTypeParam = (urlParams.get('taskType') || "speaking").toLowerCase().trim();
-    const currentVocabId = urlParams.get('vocabId') || ""; 
+    let currentVocabId = urlParams.get('vocabId') || ""; 
     const isVocabQuiz = urlParams.get('vocabQuiz') || "false";
     
-    // Generate Standardized Submission ID
-const now = new Date();
-const datePart = `${now.getMonth() + 1}/${now.getDate()}/${now.getFullYear()}`;
-const timePart = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-const submissionId = `Sub_${datePart} ${timePart}_${studentId}`;
+    const now = new Date();
+    const datePart = `${now.getMonth() + 1}/${now.getDate()}/${now.getFullYear()}`;
+    const timePart = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+    const submissionId = `Sub_${datePart} ${timePart}_${studentId}`;
     
     let currentPrompt = "Tell me about what you learned today.";
     let targetTopic = "";
@@ -203,36 +247,18 @@ const submissionId = `Sub_${datePart} ${timePart}_${studentId}`;
     let mcQuestionCount = 0;
     let firstTryGrade = null;
     
-    // Recording Variables
-    let isRecording = false;
-    let mediaRecorder;
-    let audioChunks = [];
-    let recognition;
-    let finalTranscript = "";
-    
-    // Diagnostic Recording Variables
-    let diagRecording = false;
-    let diagMediaRecorder;
-    let diagAudioChunks = [];
-    let diagRecognition;
-    let diagFinalTranscript = "";
-    window.diagBase64Audio = "";
-    window.diagMimeType = "";
-    
-    let isSpeaking = false;
-    let currentTTSBtn = null;
-    let isReadingTop = false;
+    let isRecording = false, mediaRecorder, audioChunks = [], recognition, finalTranscript = "";
+    let diagRecording = false, diagMediaRecorder, diagAudioChunks = [], diagRecognition, diagFinalTranscript = "";
+    window.diagBase64Audio = ""; window.diagMimeType = "";
+    let isSpeaking = false, currentTTSBtn = null, isReadingTop = false;
 
-    // Sentence Analysis Storage
     let saAnswers = { q1a1: "", q1a2: "", q2fix: "", q2rule: "", q3ans: "" };
     let hasSentenceAnalysis = false;
     let saReadAloudText = "";
 
     function parseMarkdown(text) {
         if (!text) return "";
-        return text.replace(/\*\*([\s\S]*?)\*\*/g, '<strong>$1</strong>')
-                   .replace(/\*([\s\S]*?)\*/g, '<em>$1</em>')
-                   .replace(/<\/?QUESTION>/gi, '');
+        return text.replace(/\*\*([\s\S]*?)\*\*/g, '<strong>$1</strong>').replace(/\*([\s\S]*?)\*/g, '<em>$1</em>').replace(/<\/?QUESTION>/gi, '');
     }
 
     function getRubricHTML(prefix) {
@@ -262,10 +288,7 @@ const submissionId = `Sub_${datePart} ${timePart}_${studentId}`;
         let textToRead = contextBox.innerText; 
         textToRead = textToRead.replace(/\*/g, '');
         const utterance = new SpeechSynthesisUtterance(textToRead);
-        utterance.onend = function() {
-            isReadingTop = false;
-            if(btn) btn.innerHTML = "🔊 Read Aloud";
-        };
+        utterance.onend = function() { isReadingTop = false; if(btn) btn.innerHTML = "🔊 Read Aloud"; };
         isReadingTop = true;
         btn.innerHTML = "⏹ Stop Reading";
         window.speechSynthesis.speak(utterance);
@@ -317,8 +340,7 @@ const submissionId = `Sub_${datePart} ${timePart}_${studentId}`;
     }
 
     function extractCorrectAnswers() {
-        correctAnswers = {};
-        answerExplanations = {};
+        correctAnswers = {}; answerExplanations = {};
         const keyRegex = /(?:^|\n|<br>)\s*(\d+)[\.\)]\s*([A-D])\s*[\-\u2013\:]?\s*([\s\S]*?)(?=(?:\n|<br>)\s*\d+[\.\)]\s*[A-D]|$)/gi;
         let kMatch;
         while ((kMatch = keyRegex.exec(storedAnswerKey)) !== null) {
@@ -329,8 +351,7 @@ const submissionId = `Sub_${datePart} ${timePart}_${studentId}`;
 
     function renderMCUI(rawText, taskType) {
         let container = document.getElementById('mcContainer');
-        container.innerHTML = "";
-        let html = "";
+        container.innerHTML = ""; let html = "";
         const audioMatch = rawText.match(/<AUDIO_SCRIPT>([\s\S]*?)<\/AUDIO_SCRIPT>/i);
         if (audioMatch) {
             document.getElementById('hiddenAudioScript').innerText = audioMatch[1].trim();
@@ -342,9 +363,7 @@ const submissionId = `Sub_${datePart} ${timePart}_${studentId}`;
         for (let chunk of chunks) {
             chunk = chunk.trim();
             if (!chunk || chunk.toLowerCase().startsWith('answer key')) continue;
-            let lines = chunk.split('\n');
-            let qText = "";
-            let options = [];
+            let lines = chunk.split('\n'); let qText = ""; let options = [];
             for (let line of lines) {
                 line = line.trim();
                 if (/^[A-E][\.\)]/i.test(line)) { options.push(line); } 
@@ -371,118 +390,79 @@ const submissionId = `Sub_${datePart} ${timePart}_${studentId}`;
 
     function renderSentenceAnalysisUI(promptText) {
         let container = document.getElementById('saContainer');
-        container.innerHTML = "";
-        let html = "";
-        hasSentenceAnalysis = false;
-        saReadAloudText = "Part 2. Sentence Analysis. ";
+        container.innerHTML = ""; let html = "";
+        hasSentenceAnalysis = false; saReadAloudText = "Part 2. Sentence Analysis. ";
         
         let q1Match = promptText.match(/<Q1>([\s\S]*?)<\/Q1>/);
         if (q1Match) {
-            hasSentenceAnalysis = true;
-            let data = q1Match[1];
+            hasSentenceAnalysis = true; let data = q1Match[1];
             let scenario = (data.match(/Scenario:\s*(.*)/) || [])[1] || "";
             let b1 = (data.match(/Bank 1:\s*(.*)/) || [])[1] || "";
             let b2 = (data.match(/Bank 2:\s*(.*)/) || [])[1] || "";
             saAnswers.q1a1 = (data.match(/Answer 1:\s*(.*)/) || [])[1] || "";
             saAnswers.q1a2 = (data.match(/Answer 2:\s*(.*)/) || [])[1] || "";
-
             let opts1 = b1.split('|').map(s=>s.trim()).sort(() => Math.random() - 0.5);
             let opts2 = b2.split('|').map(s=>s.trim()).sort(() => Math.random() - 0.5);
-
             let sel1 = `<select id="q1_b1" class="sa-select"><option value="">--Select--</option>` + opts1.map(o=>`<option value="${o.replace(/"/g, '&quot;')}">${o}</option>`).join('') + `</select>`;
             let sel2 = `<select id="q1_b2" class="sa-select"><option value="">--Select--</option>` + opts2.map(o=>`<option value="${o.replace(/"/g, '&quot;')}">${o}</option>`).join('') + `</select>`;
-            
             let displayScenario = scenario;
-            displayScenario = displayScenario.replace(/\[BLANK\s*1\]|_{3,}/i, sel1);
-            displayScenario = displayScenario.replace(/\[BLANK\s*2\]|_{3,}/i, sel2);
-            
-            if (!displayScenario.includes('<select')) {
-                displayScenario += `<br><br> ${sel1} &nbsp; ${sel2}`;
-            }
-
-            html += `<div class="sa-card">
-                <div class="q-text">1. Logical Linker</div>
-                <div style="line-height:2.2; font-size:1.1em;">${parseMarkdown(displayScenario)}</div>
-                <div id="sa_fb_1" class="mc-feedback"></div>
-            </div>`;
-
-            let audioScenario = scenario.replace(/\[BLANK\s*1\]|_{3,}/gi, "blank one").replace(/\[BLANK\s*2\]|_{3,}/gi, "blank two");
-            saReadAloudText += `Question 1. Logical Linker. Scenario: ${audioScenario}. Options for blank one are: ${opts1.join(", ")}. Options for blank two are: ${opts2.join(", ")}. `;
+            displayScenario = displayScenario.replace(/\[BLANK\s*1\]|_{3,}/i, sel1).replace(/\[BLANK\s*2\]|_{3,}/i, sel2);
+            if (!displayScenario.includes('<select')) displayScenario += `<br><br> ${sel1} &nbsp; ${sel2}`;
+            html += `<div class="sa-card"><div class="q-text">1. Logical Linker</div><div style="line-height:2.2; font-size:1.1em;">${parseMarkdown(displayScenario)}</div><div id="sa_fb_1" class="mc-feedback"></div></div>`;
+            saReadAloudText += `Question 1. Logical Linker. Scenario: ${scenario.replace(/\[BLANK\s*1\]|_{3,}/gi, "blank one").replace(/\[BLANK\s*2\]|_{3,}/gi, "blank two")}. Options for blank one are: ${opts1.join(", ")}. Options for blank two are: ${opts2.join(", ")}. `;
         }
 
         let q2Match = promptText.match(/<Q2>([\s\S]*?)<\/Q2>/);
         if (q2Match) {
-            hasSentenceAnalysis = true;
-            let data = q2Match[1];
+            hasSentenceAnalysis = true; let data = q2Match[1];
             let sentence = (data.match(/Sentence:\s*(.*)/) || [])[1] || "";
             let fixBank = (data.match(/Fix Bank:\s*(.*)/) || [])[1] || "";
             let ruleBank = (data.match(/Rule Bank:\s*(.*)/) || [])[1] || "";
             saAnswers.q2fix = (data.match(/Answer Fix:\s*(.*)/) || [])[1] || "";
             saAnswers.q2rule = (data.match(/Answer Rule:\s*(.*)/) || [])[1] || "";
-
             let optsFix = fixBank.split('|').map(s=>s.trim()).sort(() => Math.random() - 0.5);
             let optsRule = ruleBank.split('|').map(s=>s.trim()).sort(() => Math.random() - 0.5);
-
             let selFix = `<select id="q2_fix" class="sa-select"><option value="">--Select Fix--</option>` + optsFix.map(o=>`<option value="${o.replace(/"/g, '&quot;')}">${o}</option>`).join('') + `</select>`;
             let selRule = `<select id="q2_rule" class="sa-select"><option value="">--Select Rule--</option>` + optsRule.map(o=>`<option value="${o.replace(/"/g, '&quot;')}">${o}</option>`).join('') + `</select>`;
-
-            html += `<div class="sa-card">
-                <div class="q-text">2. Be the Teacher (Error Analysis)</div>
-                <p><strong>Student Sentence:</strong> <em>"${parseMarkdown(sentence)}"</em></p>
-                <div style="display:flex; flex-direction:column; gap:10px;">
-                    <div><strong>Fix the error:</strong> ${selFix}</div>
-                    <div><strong>Why was it wrong?</strong> ${selRule}</div>
-                </div>
-                <div id="sa_fb_2" class="mc-feedback"></div>
-            </div>`;
-
+            html += `<div class="sa-card"><div class="q-text">2. Be the Teacher (Error Analysis)</div><p><strong>Student Sentence:</strong> <em>"${parseMarkdown(sentence)}"</em></p><div style="display:flex; flex-direction:column; gap:10px;"><div><strong>Fix the error:</strong> ${selFix}</div><div><strong>Why was it wrong?</strong> ${selRule}</div></div><div id="sa_fb_2" class="mc-feedback"></div></div>`;
             saReadAloudText += `Question 2. Be the Teacher. Student Sentence: ${sentence}. Options to fix the error are: ${optsFix.join(", ")}. Options for why it was wrong are: ${optsRule.join(", ")}. `;
         }
 
         let q3Match = promptText.match(/<Q3>([\s\S]*?)<\/Q3>/);
         if (q3Match) {
-            hasSentenceAnalysis = true;
-            let data = q3Match[1];
+            hasSentenceAnalysis = true; let data = q3Match[1];
             let base = (data.match(/Base:\s*(.*)/) || [])[1] || "";
             let goal = (data.match(/Goal:\s*(.*)/) || [])[1] || "";
             let bank = (data.match(/Bank:\s*(.*)/) || [])[1] || "";
             saAnswers.q3ans = (data.match(/Answer:\s*(.*)/) || [])[1] || "";
-
             let chunks = bank.split('|').map(s=>s.trim()).sort(() => Math.random() - 0.5);
-            
-            html += `<div class="sa-card">
-                <div class="q-text">3. Build a Better Sentence</div>
-                <p><strong>Base Sentence:</strong> <em>"${parseMarkdown(base)}"</em></p>
-                <p><strong>Goal:</strong> ${parseMarkdown(goal)}</p>
-                <p style="font-size:0.9em; color:#7f8c8d; margin-bottom: 5px;">Use the chunks in this Word Bank to type out your expanded sentence:</p>
-                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:15px; padding: 10px; background: #fdfdfd; border-radius: 8px;">`;
-            
-            chunks.forEach((chunk) => {
-                html += `<span style="background: #EBF5FB; border: 1px solid #3498DB; color: #2C3E50; padding: 6px 12px; border-radius: 12px; font-size: 0.95em; font-weight: bold;">${parseMarkdown(chunk)}</span>`;
-            });
-
-            html += `</div>
-                <textarea id="q3_final_val" placeholder="Type your complete, expanded sentence here..." style="height:80px; width:100%; padding:10px; border-radius:8px; border:1px solid #ccc; font-family:inherit;"></textarea>
-                <div id="sa_fb_3" class="mc-feedback"></div>
-            </div>`;
-
+            html += `<div class="sa-card"><div class="q-text">3. Build a Better Sentence</div><p><strong>Base Sentence:</strong> <em>"${parseMarkdown(base)}"</em></p><p><strong>Goal:</strong> ${parseMarkdown(goal)}</p><p style="font-size:0.9em; color:#7f8c8d; margin-bottom: 5px;">Use the chunks in this Word Bank to type out your expanded sentence:</p><div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:15px; padding: 10px; background: #fdfdfd; border-radius: 8px;">`;
+            chunks.forEach((chunk) => { html += `<span style="background: #EBF5FB; border: 1px solid #3498DB; color: #2C3E50; padding: 6px 12px; border-radius: 12px; font-size: 0.95em; font-weight: bold;">${parseMarkdown(chunk)}</span>`; });
+            html += `</div><textarea id="q3_final_val" placeholder="Type your complete, expanded sentence here..." style="height:80px; width:100%; padding:10px; border-radius:8px; border:1px solid #ccc; font-family:inherit;"></textarea><div id="sa_fb_3" class="mc-feedback"></div></div>`;
             saReadAloudText += `Question 3. Build a Better Sentence. Base Sentence: ${base}. Goal: ${goal}. Word bank choices are: ${chunks.join(", ")}. `;
         }
-
-        if (hasSentenceAnalysis) {
-            container.innerHTML = html;
-            document.getElementById('sentenceAnalysisSection').style.display = "block";
-        }
+        if (hasSentenceAnalysis) { container.innerHTML = html; document.getElementById('sentenceAnalysisSection').style.display = "block"; }
     }
 
     async function loadData() {
         document.getElementById('status').innerText = "Connecting to database...";
+
+        // NEW: ROUTE TO VOCAB DASHBOARD IF TASK IS VOCAB
+        if (taskTypeParam === 'vocab') {
+            document.getElementById('headerTop').innerText = "🧠 VOCABULARY DASHBOARD";
+            document.getElementById('lessonTitleDiv').style.display = "none";
+            document.getElementById('headerBottom').style.display = "none";
+            document.getElementById('topSpacer').style.display = "none";
+            document.getElementById('lessonSpacer').style.display = "none";
+            loadVocabDashboard();
+            return;
+        }
+
         let prettyTaskName = "";
         if (taskTypeParam === 'listening') prettyTaskName = "🎧 LISTENING TASK";
         else if (taskTypeParam === 'comprehension') prettyTaskName = "❓ COMPREHENSION TASK";
         else if (taskTypeParam === 'speaking') prettyTaskName = "🗣️ SPEAKING TASK";
         else if (taskTypeParam === 'writing') prettyTaskName = "📝 WRITING TASK";
-        else if (taskTypeParam === 'vocab') prettyTaskName = "🧠 VOCABULARY PRACTICE";
         else if (taskTypeParam === 'diagnostic') prettyTaskName = "📈 LITERACY DIAGNOSTIC";
         else prettyTaskName = taskTypeParam.toUpperCase() + " TASK";
 
@@ -494,8 +474,7 @@ const submissionId = `Sub_${datePart} ${timePart}_${studentId}`;
             const response = await fetch(fetchUrl, { redirect: "follow" });
             const textResponse = await response.text();
             let data;
-            try { data = JSON.parse(textResponse); } 
-            catch (jsonErr) { throw new Error("Invalid connection response."); }
+            try { data = JSON.parse(textResponse); } catch (jsonErr) { throw new Error("Invalid connection response."); }
             
             if (data.error) {
                 document.getElementById('headerTop').innerText = "⚠️ LESSON NOT FOUND";
@@ -505,7 +484,6 @@ const submissionId = `Sub_${datePart} ${timePart}_${studentId}`;
 
             if (data.fullLesson) {
                 const lessonText = data.fullLesson;
-                
                 if (lessonText.includes("🎯 TITLE:")) {
                     targetTopic = lessonText.split("🎯 TITLE:")[1].split("\n")[0].trim();
                     document.getElementById('targetTopicSpan').innerText = targetTopic;
@@ -518,17 +496,10 @@ const submissionId = `Sub_${datePart} ${timePart}_${studentId}`;
                         let end = lessonText.indexOf(endMarker, start);
                         if (end === -1) return null; 
                         return lessonText.substring(start, end).trim();
-                    } else {
-                        return lessonText.substring(start).trim();
-                    }
+                    } else { return lessonText.substring(start).trim(); }
                 };
 
-                let contextText = getSection("🎯 OBJECTIVE", "🎧 LISTENING TASK") || 
-                                  getSection("🎯 OBJECTIVE", "🎤 READING PASSAGE") || 
-                                  getSection("🎯 OBJECTIVE", "❓ COMPREHENSION TASK") || 
-                                  getSection("🎯 OBJECTIVE", "🗣️ SPEAKING TASK") ||
-                                  getSection("🎯 OBJECTIVE", null);
-                                  
+                let contextText = getSection("🎯 OBJECTIVE", "🎧 LISTENING TASK") || getSection("🎯 OBJECTIVE", "🎤 READING PASSAGE") || getSection("🎯 OBJECTIVE", "❓ COMPREHENSION TASK") || getSection("🎯 OBJECTIVE", "🗣️ SPEAKING TASK") || getSection("🎯 OBJECTIVE", null);
                 if (contextText) {
                     if (contextText.includes("📋 STANDARDS") && contextText.includes("📖 ANCHOR")) {
                         let before = contextText.substring(0, contextText.indexOf("📋 STANDARDS"));
@@ -537,21 +508,24 @@ const submissionId = `Sub_${datePart} ${timePart}_${studentId}`;
                     }
                     document.getElementById('lessonContextBox').innerHTML = `<div id="lessonContentText">${parseMarkdown(contextText.trim())}</div>`;
                     document.getElementById('lessonContextBox').style.display = "block";
-                    if (taskTypeParam !== "comprehension" && taskTypeParam !== "diagnostic") {
-                        document.getElementById('topReadAloudContainer').style.display = "block";
-                    }
+                    if (taskTypeParam !== "comprehension" && taskTypeParam !== "diagnostic") { document.getElementById('topReadAloudContainer').style.display = "block"; }
                 }
                 
                 if (taskTypeParam === "diagnostic") {
-                    let passageRaw = getSection("🎤 READING PASSAGE", "❓ COMPREHENSION TASK") || "";
-                    document.getElementById('diagnosticPassage').innerHTML = parseMarkdown(passageRaw.replace("🎤 READING PASSAGE", "").trim());
-                    
+                    let passageRaw = getSection("🎤 READING PASSAGE", "❓ COMPREHENSION TASK");
+                    if (!passageRaw) {
+                        let listeningRaw = getSection("🎧 LISTENING TASK", "❓ COMPREHENSION TASK") || "";
+                        let audioMatch = listeningRaw.match(/<AUDIO_SCRIPT>([\s\S]*?)<\/AUDIO_SCRIPT>/i);
+                        if (audioMatch) passageRaw = audioMatch[1];
+                        else passageRaw = "Reading passage not found. Please notify your teacher.";
+                    } else { passageRaw = passageRaw.replace("🎤 READING PASSAGE", ""); }
+
+                    document.getElementById('diagnosticPassage').innerHTML = parseMarkdown(passageRaw.trim());
                     let mcRaw = getSection("❓ COMPREHENSION TASK", null) || "";
                     if (/Answer Key:/i.test(mcRaw)) { mcRaw = mcRaw.split(/Answer Key:/i)[0].trim(); }
                     
                     let mcContainer = document.getElementById('diagMcContainer');
-                    mcContainer.innerHTML = "";
-                    let html = "";
+                    mcContainer.innerHTML = ""; let html = "";
                     mcRaw = mcRaw.replace(/<\/?QUESTION>/gi, '');
                     let chunks = mcRaw.split(/(?=\n\d+\.)|(?=^\d+\.)/);
                     mcQuestionCount = 0;
@@ -559,25 +533,16 @@ const submissionId = `Sub_${datePart} ${timePart}_${studentId}`;
                     for (let chunk of chunks) {
                         chunk = chunk.trim();
                         if (!chunk) continue;
-                        let lines = chunk.split('\n');
-                        let qText = "";
-                        let options = [];
+                        let lines = chunk.split('\n'); let qText = ""; let options = [];
                         for (let line of lines) {
                             line = line.trim();
-                            if (/^[A-E][\.\)]/i.test(line)) { options.push(line); } 
-                            else if (line) { qText += line + " "; }
+                            if (/^[A-E][\.\)]/i.test(line)) { options.push(line); } else if (line) { qText += line + " "; }
                         }
                         if (options.length > 0) {
                             mcQuestionCount++;
-                            let safeAttrText = qText.trim().replace(/"/g, '&quot;').replace(/'/g, "\\'");
-                            html += `<div class="mc-question" id="diagBlock_${mcQuestionCount}">
-                                        <div style="display:flex; align-items:flex-start;">
-                                            <button class="action-btn" id="btnDiagQ${mcQuestionCount}" style="padding: 5px 10px; margin-right: 15px;" data-qtext="${safeAttrText}" onclick="toggleSpeak(this.dataset.qtext, 'btnDiagQ${mcQuestionCount}', '🔊 Listen')">🔊 Listen</button>
-                                            <div class="q-text" style="margin: 0;">${parseMarkdown(qText.trim())}</div>
-                                        </div><div class="spacer-line"></div>`;
-                            for (let opt of options) {
-                                html += `<label class="mc-option"><input type="radio" name="diag_question_${mcQuestionCount}" value="${opt.replace(/"/g, '&quot;')}"> ${parseMarkdown(opt)}</label>`;
-                            }
+                            let safeAttrText = qText.trim().replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                            html += `<div class="mc-question" id="diagBlock_${mcQuestionCount}"><div style="display:flex; align-items:flex-start;"><button class="action-btn" id="btnDiagQ${mcQuestionCount}" style="padding: 5px 10px; margin-right: 15px;" data-qtext="${safeAttrText}" onclick="toggleSpeak(this.dataset.qtext, 'btnDiagQ${mcQuestionCount}', '🔊 Listen')">🔊 Listen</button><div class="q-text" style="margin: 0;">${parseMarkdown(qText.trim())}</div></div><div class="spacer-line"></div>`;
+                            for (let opt of options) { html += `<label class="mc-option"><input type="radio" name="diag_question_${mcQuestionCount}" value="${opt.replace(/"/g, '&quot;')}"> ${parseMarkdown(opt)}</label>`; }
                             html += `</div>`;
                         }
                     }
@@ -607,15 +572,11 @@ const submissionId = `Sub_${datePart} ${timePart}_${studentId}`;
                     document.getElementById('writeRubricContainer').innerHTML = getRubricHTML('write_');
                     let rawPrompt = getSection("📝 WRITING TASK", "🤔 REFLECTION TASK") || "Please write about what you learned.";
                     currentPrompt = rawPrompt.replace("📝 WRITING TASK", "").trim();
-                    
-                    let scafPrompt = currentPrompt;
-                    let openPrompt = "";
-
+                    let scafPrompt = currentPrompt; let openPrompt = "";
                     if (currentPrompt.includes("**Part 1: Scaffolded Task:**")) {
                         let part1Start = currentPrompt.indexOf("**Part 1: Scaffolded Task:**");
                         let part2Start = currentPrompt.indexOf("**Part 2: Sentence Analysis:**");
                         let part3Start = currentPrompt.indexOf("**Part 3: Extended Writing Task:**");
-
                         if (part2Start !== -1 && part3Start !== -1) {
                             scafPrompt = currentPrompt.substring(part1Start + "**Part 1: Scaffolded Task:**".length, part2Start).trim();
                             let saPromptText = currentPrompt.substring(part2Start + "**Part 2: Sentence Analysis:**".length, part3Start).trim();
@@ -635,86 +596,46 @@ const submissionId = `Sub_${datePart} ${timePart}_${studentId}`;
                             openPrompt = parts[1].trim();
                         }
                     }
-
                     document.getElementById('scaffoldedPrompt').innerHTML = parseMarkdown(scafPrompt);
                     if(openPrompt) {
                         document.getElementById('openEndedPrompt').innerHTML = parseMarkdown(openPrompt);
                         document.getElementById('openEndedSection').style.display = "block";
                     }
                     document.getElementById('writingUI').style.display = "block";
-
-                } else if (taskTypeParam === "vocab") {
-                    document.getElementById('vocabUI').style.display = "block";
                 }
             }
-        } catch (e) {
-            document.getElementById('status').innerText = `⚠️ SYSTEM WARNING: Data could not load. Refresh page.`;
-        }
+        } catch (e) { document.getElementById('status').innerText = `⚠️ SYSTEM WARNING: Data could not load. Refresh page.`; }
         if (document.getElementById('status').innerText === "Connecting to database...") { document.getElementById('status').innerText = ""; }
     }
 
     // --- STANDARD AUDIO RECORDING ---
     async function toggleRecording() {
-        let btn = document.getElementById('recordBtn');
-        let transcriptDisplay = document.getElementById('liveTranscript');
-        
+        let btn = document.getElementById('recordBtn'); let transcriptDisplay = document.getElementById('liveTranscript');
         if (isRecording) {
-            if(recognition) {
-                recognition.stop();
-                document.getElementById('status').innerText = "Finalizing text...";
-            }
+            if(recognition) { recognition.stop(); document.getElementById('status').innerText = "Finalizing text..."; }
             setTimeout(() => {
-                if(mediaRecorder && mediaRecorder.state !== "inactive") { 
-                    try { mediaRecorder.requestData(); } catch(e){}
-                    mediaRecorder.stop(); 
-                    if (mediaRecorder.stream) mediaRecorder.stream.getTracks().forEach(t => t.stop());
-                }
-                isRecording = false;
-                btn.classList.remove("recording");
-                btn.innerText = "🎤 Start Recording";
-                document.getElementById('status').innerText = "Processing audio...";
+                if(mediaRecorder && mediaRecorder.state !== "inactive") { try { mediaRecorder.requestData(); } catch(e){} mediaRecorder.stop(); if (mediaRecorder.stream) mediaRecorder.stream.getTracks().forEach(t => t.stop()); }
+                isRecording = false; btn.classList.remove("recording"); btn.innerText = "🎤 Start Recording"; document.getElementById('status').innerText = "Processing audio...";
             }, 500);
         } else {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
-                finalTranscript = "";
-                
-                transcriptDisplay.style.display = "block";
-                transcriptDisplay.innerText = "Listening... Speak now.";
-
-                mediaRecorder.addEventListener("dataavailable", event => { 
-                    if (event.data && event.data.size > 0) audioChunks.push(event.data); 
-                });
-                
+                mediaRecorder = new MediaRecorder(stream); audioChunks = []; finalTranscript = "";
+                transcriptDisplay.style.display = "block"; transcriptDisplay.innerText = "Listening... Speak now.";
+                mediaRecorder.addEventListener("dataavailable", event => { if (event.data && event.data.size > 0) audioChunks.push(event.data); });
                 mediaRecorder.addEventListener("stop", () => {
                     const mimeType = mediaRecorder.mimeType || 'audio/webm';
                     const audioBlob = new Blob(audioChunks, { type: mimeType });
                     if (audioBlob.size > 0) {
-                        const reader = new FileReader();
-                        reader.readAsDataURL(audioBlob);
-                        reader.onloadend = () => {
-                            const base64Audio = reader.result.split(',')[1];
-                            submitAudioTask(finalTranscript.trim(), base64Audio, mimeType);
-                        };
-                    } else {
-                        submitAudioTask(finalTranscript.trim(), "", mimeType);
-                    }
+                        const reader = new FileReader(); reader.readAsDataURL(audioBlob);
+                        reader.onloadend = () => { submitAudioTask(finalTranscript.trim(), reader.result.split(',')[1], mimeType); };
+                    } else { submitAudioTask(finalTranscript.trim(), "", mimeType); }
                 });
-
-                mediaRecorder.start(); 
-                isRecording = true;
-                btn.classList.add("recording");
-                btn.innerText = "⏹️ Stop & Submit";
-                document.getElementById('status').innerText = "Recording...";
-
+                mediaRecorder.start(); isRecording = true; btn.classList.add("recording"); btn.innerText = "⏹️ Stop & Submit"; document.getElementById('status').innerText = "Recording...";
                 setTimeout(() => {
                     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
                     if (SpeechRecognition) {
-                        recognition = new SpeechRecognition();
-                        recognition.continuous = true;
-                        recognition.interimResults = true;
+                        recognition = new SpeechRecognition(); recognition.continuous = true; recognition.interimResults = true;
                         recognition.onresult = (event) => {
                             let interim = "";
                             for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -724,138 +645,76 @@ const submissionId = `Sub_${datePart} ${timePart}_${studentId}`;
                             transcriptDisplay.innerText = finalTranscript + interim;
                         };
                         recognition.start();
-                    } else {
-                        finalTranscript = "Speech recognition not supported in this browser. Only audio file will be sent.";
-                        transcriptDisplay.innerText = finalTranscript;
-                    }
+                    } else { finalTranscript = "Speech recognition not supported in this browser. Only audio file will be sent."; transcriptDisplay.innerText = finalTranscript; }
                 }, 400);
-            } catch (err) {
-                console.error(err);
-                alert("Microphone access is required. Please check your browser settings and try again.");
-                transcriptDisplay.style.display = "block";
-            }
+            } catch (err) { alert("Microphone access is required. Please check your browser settings and try again."); transcriptDisplay.style.display = "block"; }
         }
     }
 
     // --- DIAGNOSTIC AUDIO RECORDING ---
     async function toggleDiagRecording() {
-        let btn = document.getElementById('diagRecordBtn');
-        let transcriptDisplay = document.getElementById('diagLiveTranscript');
-        
+        let btn = document.getElementById('diagRecordBtn'); let transcriptDisplay = document.getElementById('diagLiveTranscript');
         if (diagRecording) {
-            if (diagRecognition) {
-                diagRecognition.stop();
-            }
+            if (diagRecognition) { diagRecognition.stop(); }
             setTimeout(() => {
-                if (diagMediaRecorder && diagMediaRecorder.state !== "inactive") { 
-                    try { diagMediaRecorder.requestData(); } catch(e){}
-                    diagMediaRecorder.stop(); 
-                    if (diagMediaRecorder.stream) diagMediaRecorder.stream.getTracks().forEach(t => t.stop());
-                }
-                diagRecording = false;
-                btn.classList.remove("recording");
-                btn.innerText = "✅ Reading Complete";
-                btn.disabled = true;
-                document.getElementById('status').innerText = "Audio captured! Please answer the questions below.";
-                document.getElementById('diagnosticMCSection').style.display = "block";
+                if (diagMediaRecorder && diagMediaRecorder.state !== "inactive") { try { diagMediaRecorder.requestData(); } catch(e){} diagMediaRecorder.stop(); if (diagMediaRecorder.stream) diagMediaRecorder.stream.getTracks().forEach(t => t.stop()); }
+                diagRecording = false; btn.classList.remove("recording"); btn.innerText = "✅ Reading Complete"; btn.disabled = true; document.getElementById('status').innerText = "Audio captured! Please answer the questions below."; document.getElementById('diagnosticMCSection').style.display = "block";
             }, 500);
         } else {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                diagMediaRecorder = new MediaRecorder(stream);
-                diagAudioChunks = [];
-                diagFinalTranscript = "";
-                
-                transcriptDisplay.style.display = "block";
-                transcriptDisplay.innerText = "Listening... Read out loud now.";
-
-                diagMediaRecorder.addEventListener("dataavailable", event => { 
-                    if (event.data && event.data.size > 0) diagAudioChunks.push(event.data); 
-                });
-                
+                diagMediaRecorder = new MediaRecorder(stream); diagAudioChunks = []; diagFinalTranscript = "";
+                transcriptDisplay.style.display = "block"; transcriptDisplay.innerText = "Listening... Read out loud now.";
+                diagMediaRecorder.addEventListener("dataavailable", event => { if (event.data && event.data.size > 0) diagAudioChunks.push(event.data); });
                 diagMediaRecorder.addEventListener("stop", () => {
                     const mimeType = diagMediaRecorder.mimeType || 'audio/webm';
                     const audioBlob = new Blob(diagAudioChunks, { type: mimeType });
                     if (audioBlob.size > 0) {
-                        const reader = new FileReader();
-                        reader.readAsDataURL(audioBlob);
-                        reader.onloadend = () => {
-                            window.diagBase64Audio = reader.result.split(',')[1];
-                            window.diagMimeType = mimeType;
-                        };
-                    } else {
-                        document.getElementById('status').innerText = "Failed to capture audio. Please try reading again.";
-                    }
+                        const reader = new FileReader(); reader.readAsDataURL(audioBlob);
+                        reader.onloadend = () => { window.diagBase64Audio = reader.result.split(',')[1]; window.diagMimeType = mimeType; };
+                    } else { document.getElementById('status').innerText = "Failed to capture audio. Please try reading again."; }
                 });
-
-                diagMediaRecorder.start(); 
-                diagRecording = true;
-                btn.classList.add("recording");
-                btn.innerText = "⏹️ Stop Reading";
-                document.getElementById('status').innerText = "Recording...";
-
+                diagMediaRecorder.start(); diagRecording = true; btn.classList.add("recording"); btn.innerText = "⏹️ Stop Reading"; document.getElementById('status').innerText = "Recording...";
                 setTimeout(() => {
                     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
                     if (SpeechRecognition) {
-                        diagRecognition = new SpeechRecognition();
-                        diagRecognition.continuous = true;
-                        diagRecognition.interimResults = true;
+                        diagRecognition = new SpeechRecognition(); diagRecognition.continuous = true; diagRecognition.interimResults = true;
                         diagRecognition.onresult = (event) => {
                             let interim = "";
                             for (let i = event.resultIndex; i < event.results.length; ++i) {
                                 if (event.results[i].isFinal) diagFinalTranscript += event.results[i][0].transcript + " ";
                                 else interim += event.results[i][0].transcript;
                             }
-                            transcriptDisplay.innerText = diagFinalTranscript + interim;
-                            window.diagTranscript = diagFinalTranscript.trim();
+                            transcriptDisplay.innerText = diagFinalTranscript + interim; window.diagTranscript = diagFinalTranscript.trim();
                         };
                         diagRecognition.start();
-                    } else {
-                        diagFinalTranscript = "Speech recognition not supported in this browser. Only audio file will be sent.";
-                        transcriptDisplay.innerText = diagFinalTranscript;
-                        window.diagTranscript = diagFinalTranscript;
-                    }
+                    } else { diagFinalTranscript = "Speech recognition not supported in this browser. Only audio file will be sent."; transcriptDisplay.innerText = diagFinalTranscript; window.diagTranscript = diagFinalTranscript; }
                 }, 400);
-            } catch (err) {
-                console.error(err);
-                alert("Microphone access is required. Please check your browser settings and try again.");
-                transcriptDisplay.style.display = "block";
-            }
+            } catch (err) { alert("Microphone access is required. Please check your browser settings and try again."); transcriptDisplay.style.display = "block"; }
         }
     }
 
     async function submitAudioTask(transcript, audioBase64, mimeType) {
         document.getElementById('status').innerText = "AI is analyzing your speech & uploading file...";
-        let btn = document.getElementById('recordBtn');
-        if(btn) btn.disabled = true;
-
+        let btn = document.getElementById('recordBtn'); if(btn) btn.disabled = true;
         const payload = { studentId, lessonId, submissionId, targetTopic, prompt: currentPrompt, text: transcript || "No speech detected.", audioBase64, mimeType, taskType: "speaking", type: "assessment" };
-        
         try {
             const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
             const result = await response.json();
-            
             let fbBox = document.getElementById('speakingFeedback');
-            fbBox.innerHTML = `<strong style="font-size:1.2em;">Overall AI Score: ${result.score !== undefined ? result.score : "N/A"}/5</strong><br><br>${parseMarkdown(result.reply)}`;
+            let cleanSpeech = (result.reply || "").replace(/<[^>]+>/g, '').replace(/[\*\_]/g, '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            fbBox.innerHTML = `<strong style="font-size:1.2em;">Overall AI Score: ${result.score !== undefined ? result.score : "N/A"}/5</strong><br><br>${parseMarkdown(result.reply)}<br><button class="action-btn" style="margin-top:15px; padding: 8px 15px; font-size: 0.9em; width: auto;" onclick="toggleSpeak(this.dataset.text, this.id, '🔊 Read AI Feedback')" data-text="${cleanSpeech}" id="btnReadFB_${Date.now()}">🔊 Read AI Feedback</button>`;
             fbBox.style.display = "block";
-            
-            if (result.score === "N/A") {
-                if(btn) { btn.innerText = "Retry Grading"; btn.disabled = false; }
-                document.getElementById('status').innerText = "AI is busy. You can retry.";
-            } else {
+            if (result.score === "N/A") { if(btn) { btn.innerText = "Retry Grading"; btn.disabled = false; } document.getElementById('status').innerText = "AI is busy. You can retry."; }
+            else {
                 if (result.vocab && result.vocab !== "?") {
-                    document.getElementById('speak_vocabScore').innerText = result.vocab;
-                    document.getElementById('speak_syntaxScore').innerText = result.syntax;
-                    document.getElementById('speak_orgScore').innerText = result.org;
-                    document.getElementById('speak_varietyScore').innerText = result.variety;
+                    document.getElementById('speak_vocabScore').innerText = result.vocab; document.getElementById('speak_syntaxScore').innerText = result.syntax;
+                    document.getElementById('speak_orgScore').innerText = result.org; document.getElementById('speak_varietyScore').innerText = result.variety;
                     document.getElementById('speak_RubricTable').style.display = "table";
                 }
                 document.getElementById('status').innerText = "Task Complete!";
             }
-        } catch(e) {
-            document.getElementById('status').innerText = "Error submitting audio.";
-            if(btn) { btn.innerText = "Retry Grading"; btn.disabled = false; }
-        }
+        } catch(e) { document.getElementById('status').innerText = "Error submitting audio."; if(btn) { btn.innerText = "Retry Grading"; btn.disabled = false; } }
     }
 
     async function submitDiagnostic() {
@@ -865,184 +724,99 @@ const submissionId = `Sub_${datePart} ${timePart}_${studentId}`;
             if (!selected) { alert(`Please select an answer for Question ${i}.`); return; }
             answers.push(`Q${i}: ` + selected.value);
         }
-        
-        let btn = document.getElementById('submitDiagBtn');
-        btn.disabled = true;
-        document.getElementById('status').innerText = "Uploading diagnostic data... Please wait.";
-
-        const payload = { 
-            studentId, lessonId, submissionId, targetTopic, prompt: currentPrompt, 
-            text: (window.diagTranscript || "No speech detected.") + "\n\nMC Answers:\n" + answers.join('\n'), 
-            audioBase64: window.diagBase64Audio || "", 
-            mimeType: window.diagMimeType || "", 
-            taskType: "diagnostic", type: "assessment" 
-        };
-        
+        let btn = document.getElementById('submitDiagBtn'); btn.disabled = true; document.getElementById('status').innerText = "Uploading diagnostic data... Please wait.";
+        const payload = { studentId, lessonId, submissionId, targetTopic, prompt: currentPrompt, text: (window.diagTranscript || "No speech detected.") + "\n\nMC Answers:\n" + answers.join('\n'), audioBase64: window.diagBase64Audio || "", mimeType: window.diagMimeType || "", taskType: "diagnostic", type: "assessment" };
         try {
             const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
             const result = await response.json();
-            
             let fbBox = document.getElementById('diagnosticFeedback');
-            fbBox.innerHTML = `<strong style="font-size:1.2em;">Diagnostic Complete!</strong><br><br>${parseMarkdown(result.reply)}`;
-            fbBox.style.display = "block";
-            document.getElementById('status').innerText = "Diagnostic Successfully Submitted!";
-        } catch(e) {
-            document.getElementById('status').innerText = "Error submitting diagnostic.";
-            btn.disabled = false;
-        }
+            let cleanSpeech = (result.reply || "").replace(/<[^>]+>/g, '').replace(/[\*\_]/g, '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            fbBox.innerHTML = `<strong style="font-size:1.2em;">Diagnostic Complete!</strong><br><br>${parseMarkdown(result.reply)}<br><button class="action-btn" style="margin-top:15px; padding: 8px 15px; font-size: 0.9em; width: auto;" onclick="toggleSpeak(this.dataset.text, this.id, '🔊 Read AI Feedback')" data-text="${cleanSpeech}" id="btnReadFB_${Date.now()}">🔊 Read AI Feedback</button>`;
+            fbBox.style.display = "block"; document.getElementById('status').innerText = "Diagnostic Successfully Submitted!";
+        } catch(e) { document.getElementById('status').innerText = "Error submitting diagnostic."; btn.disabled = false; }
     }
 
     async function submitWriting() {
-        const text1 = document.getElementById('textResponse').value;
-        const text2 = document.getElementById('textResponse2') ? document.getElementById('textResponse2').value : "";
+        const text1 = document.getElementById('textResponse').value; const text2 = document.getElementById('textResponse2') ? document.getElementById('textResponse2').value : "";
         if (!text1) { alert("Please type your response for Part 1 before submitting."); return; }
-        
         let systemNote = "";
-
         if (hasSentenceAnalysis) {
-            let q1b1 = document.getElementById('q1_b1')?.value;
-            let q1b2 = document.getElementById('q1_b2')?.value;
-            let q2fix = document.getElementById('q2_fix')?.value;
-            let q2rule = document.getElementById('q2_rule')?.value;
-            let q3ans = document.getElementById('q3_final_val')?.value;
-
+            let q1b1 = document.getElementById('q1_b1')?.value; let q1b2 = document.getElementById('q1_b2')?.value;
+            let q2fix = document.getElementById('q2_fix')?.value; let q2rule = document.getElementById('q2_rule')?.value; let q3ans = document.getElementById('q3_final_val')?.value;
             if (!q1b1 || !q1b2) { alert("Please complete Question 1 in Part 2."); return; }
             if (!q2fix || !q2rule) { alert("Please complete Question 2 in Part 2."); return; }
             if (!q3ans) { alert("Please build a sentence for Question 3 in Part 2."); return; }
 
             let q1Correct = (q1b1.trim() === saAnswers.q1a1.trim() && q1b2.trim() === saAnswers.q1a2.trim());
             let q2Correct = (q2fix.trim() === saAnswers.q2fix.trim() && q2rule.trim() === saAnswers.q2rule.trim());
-            
             let studentQ3 = q3ans.replace(/[\r\n]+/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
             let correctQ3 = saAnswers.q3ans.replace(/[\r\n]+/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
-
             let studentClean = studentQ3.replace(/[^\w\s]/gi, '').replace(/\s+/g, ' ').trim();
             let correctClean = correctQ3.replace(/[^\w\s]/gi, '').replace(/\s+/g, ' ').trim();
-
             let q3Correct = (studentQ3 === correctQ3) || (studentClean === correctClean);
-
             let correctCount = (q1Correct ? 1 : 0) + (q2Correct ? 1 : 0) + (q3Correct ? 1 : 0);
             
             let fb1 = document.getElementById('sa_fb_1'); fb1.style.display = "block";
-            if(q1Correct) { fb1.style.backgroundColor="#EAFAF1"; fb1.innerHTML = "✅ Correct!"; }
-            else { fb1.style.backgroundColor="#FDEDEC"; fb1.innerHTML = `❌ Incorrect. Correct Answers: <strong>${saAnswers.q1a1}</strong> and <strong>${saAnswers.q1a2}</strong>.`; }
-
+            if(q1Correct) { fb1.style.backgroundColor="#EAFAF1"; fb1.innerHTML = "✅ Correct!"; } else { fb1.style.backgroundColor="#FDEDEC"; fb1.innerHTML = `❌ Incorrect. Correct Answers: <strong>${saAnswers.q1a1}</strong> and <strong>${saAnswers.q1a2}</strong>.`; }
             let fb2 = document.getElementById('sa_fb_2'); fb2.style.display = "block";
-            if(q2Correct) { fb2.style.backgroundColor="#EAFAF1"; fb2.innerHTML = "✅ Correct!"; }
-            else { fb2.style.backgroundColor="#FDEDEC"; fb2.innerHTML = `❌ Incorrect. Correction: <strong>${saAnswers.q2fix}</strong> because <strong>${saAnswers.q2rule}</strong>.`; }
-
+            if(q2Correct) { fb2.style.backgroundColor="#EAFAF1"; fb2.innerHTML = "✅ Correct!"; } else { fb2.style.backgroundColor="#FDEDEC"; fb2.innerHTML = `❌ Incorrect. Correction: <strong>${saAnswers.q2fix}</strong> because <strong>${saAnswers.q2rule}</strong>.`; }
             let fb3 = document.getElementById('sa_fb_3'); fb3.style.display = "block";
-            
             let displayCorrectQ3 = saAnswers.q3ans.replace(/[\r\n]+/g, '').replace(/\s+/g, ' ').trim();
-            
-            if(q3Correct) { fb3.style.backgroundColor="#EAFAF1"; fb3.innerHTML = "✅ Correct!"; }
-            else { fb3.style.backgroundColor="#FDEDEC"; fb3.innerHTML = `❌ Incorrect. Example Correct Sentence: <strong>${displayCorrectQ3}</strong>`; }
+            if(q3Correct) { fb3.style.backgroundColor="#EAFAF1"; fb3.innerHTML = "✅ Correct!"; } else { fb3.style.backgroundColor="#FDEDEC"; fb3.innerHTML = `❌ Incorrect. Example Correct Sentence: <strong>${displayCorrectQ3}</strong>`; }
 
             if (attemptCount === 0 && correctCount < 3) {
                 document.getElementById('status').innerText = "Review Part 2 feedback. You may fix your answers and resubmit!";
-                let btn = document.getElementById('submitWritingBtn');
-                btn.innerText = "Submit Again";
-                attemptCount++;
-                return; 
+                let btn = document.getElementById('submitWritingBtn'); btn.innerText = "Submit Again"; attemptCount++; return; 
             }
-            
             systemNote = `\n\n(System Note: The student also scored ${correctCount}/3 on the auto-graded Part 2 grammar section.)`;
         }
 
-        let btn = document.getElementById('submitWritingBtn');
-        btn.disabled = true;
-        document.getElementById('status').innerText = "Submitting to AI Tutor...";
-        
+        let btn = document.getElementById('submitWritingBtn'); btn.disabled = true; document.getElementById('status').innerText = "Submitting to AI Tutor...";
         let cleanPromptForAI = currentPrompt.replace(/<Q[1-3]>[\s\S]*?<\/Q[1-3]>/gi, '').trim();
-
-        const payload = { 
-            studentId, lessonId, submissionId, targetTopic, prompt: cleanPromptForAI, 
-            text: text1 + systemNote, text2: text2, taskType: taskTypeParam, type: "assessment" 
-        };
+        const payload = { studentId, lessonId, submissionId, targetTopic, prompt: cleanPromptForAI, text: text1 + systemNote, text2: text2, taskType: taskTypeParam, type: "assessment" };
         
         try {
             const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
             const result = await response.json();
             let fbBox = document.getElementById('writingFeedback');
-            fbBox.innerHTML = `<strong style="font-size:1.2em;">Overall AI Score: ${result.score !== undefined ? result.score : "N/A"}/5</strong><br><br>${parseMarkdown(result.reply)}`;
+            let cleanSpeech = (result.reply || "").replace(/<[^>]+>/g, '').replace(/[\*\_]/g, '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            fbBox.innerHTML = `<strong style="font-size:1.2em;">Overall AI Score: ${result.score !== undefined ? result.score : "N/A"}/5</strong><br><br>${parseMarkdown(result.reply)}<br><button class="action-btn" style="margin-top:15px; padding: 8px 15px; font-size: 0.9em; width: auto;" onclick="toggleSpeak(this.dataset.text, this.id, '🔊 Read AI Feedback')" data-text="${cleanSpeech}" id="btnReadFB_${Date.now()}">🔊 Read AI Feedback</button>`;
             fbBox.style.display = "block";
             
-            if (result.score === "N/A") {
-                btn.innerText = "Retry Grading";
-                btn.disabled = false;
-                document.getElementById('status').innerText = "AI is busy. You can retry.";
-            } else {
+            if (result.score === "N/A") { btn.innerText = "Retry Grading"; btn.disabled = false; document.getElementById('status').innerText = "AI is busy. You can retry."; }
+            else {
                 if (result.vocab && result.vocab !== "?") {
-                    document.getElementById('write_vocabScore').innerText = result.vocab;
-                    document.getElementById('write_syntaxScore').innerText = result.syntax;
-                    document.getElementById('write_orgScore').innerText = result.org;
-                    document.getElementById('write_varietyScore').innerText = result.variety;
+                    document.getElementById('write_vocabScore').innerText = result.vocab; document.getElementById('write_syntaxScore').innerText = result.syntax;
+                    document.getElementById('write_orgScore').innerText = result.org; document.getElementById('write_varietyScore').innerText = result.variety;
                     document.getElementById('write_RubricTable').style.display = "table";
                 }
                 document.getElementById('status').innerText = "Task Complete!";
             }
-        } catch(e) { 
-            document.getElementById('status').innerText = "Error submitting.";
-            btn.innerText = "Retry Grading";
-            btn.disabled = false;
-        }
+        } catch(e) { document.getElementById('status').innerText = "Error submitting."; btn.innerText = "Retry Grading"; btn.disabled = false; }
     }
 
     function submitMC() {
-        let answers = [];
-        let allCorrect = true;
-        let incorrectData = [];
-        let correctCount = 0;
-        let btn = document.getElementById('submitMCBtn');
-        
-        for (let i = 1; i <= mcQuestionCount; i++) {
-            let fbDiv = document.getElementById(`feedback_q${i}`);
-            if(fbDiv) { fbDiv.style.display = "none"; fbDiv.innerHTML = ""; }
-        }
-
+        let answers = []; let allCorrect = true; let incorrectData = []; let correctCount = 0; let btn = document.getElementById('submitMCBtn');
+        for (let i = 1; i <= mcQuestionCount; i++) { let fbDiv = document.getElementById(`feedback_q${i}`); if(fbDiv) { fbDiv.style.display = "none"; fbDiv.innerHTML = ""; } }
         for (let i = 1; i <= mcQuestionCount; i++) {
             let selected = document.querySelector(`input[name="question_${i}"]:checked`);
             if (!selected) { alert(`Please select an answer for Question ${i}.`); return; }
             answers.push(`Q${i}: ` + selected.value);
-            let userLetter = selected.value.charAt(0).toUpperCase();
-            let correctLetter = correctAnswers[i];
-            let fbDiv = document.getElementById(`feedback_q${i}`);
-            fbDiv.style.display = "block";
+            let userLetter = selected.value.charAt(0).toUpperCase(); let correctLetter = correctAnswers[i];
+            let fbDiv = document.getElementById(`feedback_q${i}`); fbDiv.style.display = "block";
 
-            if (correctLetter && userLetter === correctLetter) {
-                fbDiv.style.backgroundColor = "#EAFAF1"; 
-                fbDiv.innerHTML = `<span style="color:#27AE60;font-weight:bold;">✅ Correct!</span>`;
-                correctCount++;
-            } else {
-                allCorrect = false;
-                incorrectData.push(`Q${i} Incorrect choice: ${selected.value}`);
-                fbDiv.style.backgroundColor = "#FDEDEC"; 
-                if (attemptCount === 0) {
-                    fbDiv.innerHTML = `<span style="color:#C0392B;font-weight:bold;">❌ Incorrect.</span> <span class="ai-hint-box" style="color:var(--secondary); font-style:italic;">Loading AI Hint...</span>`;
-                } else {
-                    fbDiv.innerHTML = `<span style="color:#C0392B;font-weight:bold;">❌ Incorrect.</span>`;
-                }
+            if (correctLetter && userLetter === correctLetter) { fbDiv.style.backgroundColor = "#EAFAF1"; fbDiv.innerHTML = `<span style="color:#27AE60;font-weight:bold;">✅ Correct!</span>`; correctCount++; }
+            else {
+                allCorrect = false; incorrectData.push(`Q${i} Incorrect choice: ${selected.value}`); fbDiv.style.backgroundColor = "#FDEDEC"; 
+                if (attemptCount === 0) { fbDiv.innerHTML = `<span style="color:#C0392B;font-weight:bold;">❌ Incorrect.</span> <span class="ai-hint-box" style="color:var(--secondary); font-style:italic;">Loading AI Hint...</span>`; }
+                else { fbDiv.innerHTML = `<span style="color:#C0392B;font-weight:bold;">❌ Incorrect.</span>`; }
             }
         }
-
         if (attemptCount === 0) {
-            let percentage = Math.round((correctCount / mcQuestionCount) * 100);
-            firstTryGrade = `${correctCount}/${mcQuestionCount} (${percentage}%)`;
-            
-            if (allCorrect) {
-                btn.disabled = true;
-                saveFinalAnswer(answers); 
-            } else {
-                document.getElementById('status').innerText = "Generating hints... You may retry now or wait for the hint.";
-                btn.innerText = "Submit Again";
-                btn.disabled = false;
-                attemptCount++;
-                fetchHintAsync(incorrectData.join('\n'));
-            }
-        } else {
-            btn.disabled = true;
-            saveFinalAnswer(answers);
-        }
+            let percentage = Math.round((correctCount / mcQuestionCount) * 100); firstTryGrade = `${correctCount}/${mcQuestionCount} (${percentage}%)`;
+            if (allCorrect) { btn.disabled = true; saveFinalAnswer(answers); }
+            else { document.getElementById('status').innerText = "Generating hints... You may retry now or wait for the hint."; btn.innerText = "Submit Again"; btn.disabled = false; attemptCount++; fetchHintAsync(incorrectData.join('\n')); }
+        } else { btn.disabled = true; saveFinalAnswer(answers); }
     }
 
     async function fetchHintAsync(incorrectText) {
@@ -1055,43 +829,149 @@ const submissionId = `Sub_${datePart} ${timePart}_${studentId}`;
 
             let hintBoxes = document.querySelectorAll('.ai-hint-box');
             if (hintBoxes.length > 0) {
-                hintBoxes[0].innerHTML = `<br><strong style="color:var(--primary)">🤖 AI Hint:</strong> <span style="color:var(--primary); font-style:normal;">${hintText}</span>`;
+                let cleanHint = hintText.replace(/<[^>]+>/g, '').replace(/[\*\_]/g, '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                hintBoxes[0].innerHTML = `<br><strong style="color:var(--primary)">🤖 AI Hint:</strong> <span style="color:var(--primary); font-style:normal;">${hintText}</span><br><button class="action-btn" style="margin-top:10px; padding: 5px 10px; font-size: 0.85em; width: auto;" onclick="toggleSpeak(this.dataset.text, this.id, '🔊 Read Hint')" data-text="${cleanHint}" id="btnReadHint_${Date.now()}">🔊 Read Hint</button>`;
                 for(let j=1; j<hintBoxes.length; j++) hintBoxes[j].innerHTML = "<br><em>Review the text and try again.</em>";
             }
-            if (document.getElementById('status').innerText.includes("Generating hints")) {
-                 document.getElementById('status').innerText = "Hint generated. Please try again!";
-            }
+            if (document.getElementById('status').innerText.includes("Generating hints")) { document.getElementById('status').innerText = "Hint generated. Please try again!"; }
         } catch(e) { 
-            let hintBoxes = document.querySelectorAll('.ai-hint-box');
-            hintBoxes.forEach(box => box.innerHTML = `<br><span style="color:var(--primary); font-style:normal;">Please review the text and try again!</span>`);
-            if (document.getElementById('status').innerText.includes("Generating hints")) {
-                 document.getElementById('status').innerText = "Ready for attempt 2.";
-            }
+            let hintBoxes = document.querySelectorAll('.ai-hint-box'); hintBoxes.forEach(box => box.innerHTML = `<br><span style="color:var(--primary); font-style:normal;">Please review the text and try again!</span>`);
+            if (document.getElementById('status').innerText.includes("Generating hints")) { document.getElementById('status').innerText = "Ready for attempt 2."; }
         }
     }
 
     async function saveFinalAnswer(answers) {
-        document.getElementById('status').innerText = "Saving final answer...";
+        document.getElementById('status').innerText = "Saving final answer and generating AI Feedback...";
         const scoreToSave = firstTryGrade || "Completed"; 
-        const payload = { studentId, lessonId, submissionId, targetTopic, prompt: "Multiple Choice Questions", text: answers.join('\n'), score2: scoreToSave, taskType: taskTypeParam, type: "assessment" };
-        
+        const payload = { studentId, lessonId, submissionId, targetTopic, prompt: "Multiple Choice Questions", text: answers.join('\n'), answerKey: storedAnswerKey, score2: scoreToSave, taskType: taskTypeParam, type: "assessment" };
         try {
-            await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+            const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+            const result = await response.json();
             for (let i = 1; i <= mcQuestionCount; i++) {
                 let fbDiv = document.getElementById(`feedback_q${i}`);
                 if (fbDiv) {
-                    let expl = answerExplanations[i] ? answerExplanations[i] : "";
-                    let correctLetter = correctAnswers[i] || "";
-                    let explanationHTML = `
-                    <div style="margin-top:15px; padding-top:15px; border-top:1px solid #ccc;">
-                        <strong style="color:var(--secondary); font-size:1.1em;">Correct Answer: ${correctLetter}</strong><br>
-                        <span style="display:inline-block; margin-top:5px; color:var(--primary);">${expl}</span>
-                    </div>`;
+                    let expl = answerExplanations[i] ? answerExplanations[i] : ""; let correctLetter = correctAnswers[i] || "";
+                    let explanationHTML = `<div style="margin-top:15px; padding-top:15px; border-top:1px solid #ccc;"><strong style="color:var(--secondary); font-size:1.1em;">Correct Answer: ${correctLetter}</strong><br><span style="display:inline-block; margin-top:5px; color:var(--primary);">${expl}</span></div>`;
                     fbDiv.innerHTML += explanationHTML;
                 }
             }
-            document.getElementById('status').innerText = `Task Complete! Grade: ${scoreToSave}`;
+            let mcOverall = document.getElementById('mcOverallFeedback');
+            if(!mcOverall) { mcOverall = document.createElement('div'); mcOverall.id = "mcOverallFeedback"; mcOverall.className = "ai-feedback-box"; document.getElementById('mcUI').appendChild(mcOverall); }
+            let cleanSpeech = (result.reply || "").replace(/<[^>]+>/g, '').replace(/[\*\_]/g, '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            mcOverall.innerHTML = `<strong style="font-size:1.2em;">AI Feedback:</strong><br><br>${parseMarkdown(result.reply)}<br><button class="action-btn" style="margin-top:15px; padding: 8px 15px; font-size: 0.9em; width: auto;" onclick="toggleSpeak(this.dataset.text, this.id, '🔊 Read AI Feedback')" data-text="${cleanSpeech}" id="btnReadMCFB_${Date.now()}">🔊 Read AI Feedback</button>`;
+            mcOverall.style.display = "block"; document.getElementById('status').innerText = `Task Complete! Grade: ${scoreToSave}`;
         } catch(e) { document.getElementById('status').innerText = "Error saving answer."; }
+    }
+
+    // ==========================================
+    // NEW VOCAB DASHBOARD LOGIC
+    // ==========================================
+    async function loadVocabDashboard() {
+        document.getElementById('status').innerText = "Loading vocabulary dashboard...";
+        document.getElementById('vocabDashboardUI').classList.remove('hidden');
+        try {
+            const response = await fetch(`${SCRIPT_URL}?mode=vocabDashboard&studentId=${studentId}`);
+            const data = await response.json();
+            renderVocabCards(data.vocabList);
+            document.getElementById('status').innerText = "";
+        } catch (err) {
+            document.getElementById('status').innerText = "⚠️ Failed to load vocabulary list.";
+        }
+    }
+
+    function renderVocabCards(list) {
+        const activeContainer = document.getElementById('activeVocabList');
+        const masteredContainer = document.getElementById('masteredVocabList');
+        activeContainer.innerHTML = ''; masteredContainer.innerHTML = '';
+
+        if (!list || list.length === 0) {
+            activeContainer.innerHTML = "<p>No vocabulary words assigned yet!</p>";
+            return;
+        }
+
+        list.forEach(word => {
+            const isMastered = word.status.includes('✅');
+            let badgeClass = 'badge-learning';
+            if (isMastered) badgeClass = 'badge-mastered';
+            else if (word.status.includes('🔄')) badgeClass = 'badge-relearn';
+
+            const card = `
+                <div class="vocab-card">
+                    <div>
+                        <span class="v-badge ${badgeClass}">${word.status}</span>
+                        <div class="word-title">${word.term}</div>
+                        <div class="word-def">${word.definition}</div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                        <button class="action-btn" style="padding: 10px; font-size: 0.9em; width:100%;" onclick="openFrayerModal('${word.vocabId}', '${word.term.replace(/'/g, "\\'")}', '${word.context.replace(/'/g, "\\'")}')">
+                            ${isMastered ? '<i class="fas fa-eye"></i> Review' : '<i class="fas fa-pencil-alt"></i> Start Task'}
+                        </button>
+                        ${isMastered ? `<button class="action-btn" style="background:transparent; border:2px solid #ccc; color:#666; padding:10px; font-size: 0.9em;" onclick="updateVocabStatus('${word.vocabId}', '🔄 Relearning')">Relearn</button>` : ''}
+                    </div>
+                </div>
+            `;
+            if (isMastered) masteredContainer.innerHTML += card;
+            else activeContainer.innerHTML += card;
+        });
+    }
+
+    function switchVocabTab(type) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        event.target.classList.add('active');
+        if (type === 'active') {
+            document.getElementById('activeVocabList').classList.remove('hidden');
+            document.getElementById('masteredVocabList').classList.add('hidden');
+        } else {
+            document.getElementById('activeVocabList').classList.add('hidden');
+            document.getElementById('masteredVocabList').classList.remove('hidden');
+        }
+    }
+
+    function openFrayerModal(id, term, context) {
+        currentVocabId = id;
+        document.getElementById('modalWord').innerText = term;
+        document.getElementById('modalContext').innerText = `Context: "${context}"`;
+        document.getElementById('frayerFeedback').style.display = 'none';
+        document.getElementById('frayerModal').style.display = 'flex';
+        document.getElementById('v_def').value = ''; document.getElementById('v_sent').value = '';
+        document.getElementById('v_ex').value = ''; document.getElementById('v_non').value = '';
+    }
+
+    function closeFrayerModal() { document.getElementById('frayerModal').style.display = 'none'; }
+
+    async function submitFrayerTask() {
+        const btn = document.getElementById('frayerSubmitBtn'); btn.disabled = true; btn.innerText = "Grading...";
+        const payload = {
+            type: "assessment", taskType: "vocab", studentId: studentId, vocabId: currentVocabId,
+            personalDef: document.getElementById('v_def').value, personalSent: document.getElementById('v_sent').value,
+            example: document.getElementById('v_ex').value, nonExample: document.getElementById('v_non').value
+        };
+
+        try {
+            const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+            const result = await response.json();
+            const feedbackDiv = document.getElementById('frayerFeedback');
+            feedbackDiv.style.display = 'block';
+            feedbackDiv.style.backgroundColor = result.status.includes('✅') ? '#dcfce7' : '#fef3c7';
+            feedbackDiv.style.color = result.status.includes('✅') ? '#166534' : '#92400e';
+            feedbackDiv.innerText = result.reply;
+
+            if (result.status.includes('✅')) {
+                setTimeout(() => { closeFrayerModal(); loadVocabDashboard(); }, 3000);
+            }
+        } catch (err) { alert("Error submitting. Please try again."); } 
+        finally { btn.disabled = false; btn.innerText = "Grade My Work"; }
+    }
+
+    async function updateVocabStatus(vId, newStatus) {
+        document.getElementById('status').innerText = "Moving word...";
+        try {
+            await fetch(SCRIPT_URL, {
+                method: "POST",
+                body: JSON.stringify({ type: "assessment", taskType: "updatevocabstatus", studentId: studentId, vocabId: vId, newStatus: newStatus })
+            });
+            loadVocabDashboard();
+        } catch (err) { console.error(err); }
     }
 
     loadData();
