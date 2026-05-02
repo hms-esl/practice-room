@@ -904,16 +904,17 @@
             let q1Correct = (q1b1.trim() === saAnswers.q1a1.trim() && q1b2.trim() === saAnswers.q1a2.trim());
             let q2Correct = (q2fix.trim() === saAnswers.q2fix.trim() && q2rule.trim() === saAnswers.q2rule.trim());
             
-            // SMART GRADING FOR Q3: Respects Grammar, Fixes Invisible Formatting, & Allows Proper Commas
+   // SMART GRADING FOR Q3: Respects Grammar, Fixes Invisible Formatting, & Ignores Punctuation Differences
             let studentQ3 = q3ans.replace(/[\r\n]+/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
             let correctQ3 = saAnswers.q3ans.replace(/[\r\n]+/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
 
-            // NEW: Comma-Agnostic Check 
-            // This allows the student to include a comma before "so" or "but" even if the AI forgot it in the Answer Key
-            let studentNoComma = studentQ3.replace(/,/g, '');
-            let correctNoComma = correctQ3.replace(/,/g, '');
+            // NEW: Punctuation-Agnostic Check 
+            // This strips all punctuation (commas, periods, etc.) and collapses spaces 
+            // to check if the core words match perfectly.
+            let studentClean = studentQ3.replace(/[^\w\s]/gi, '').replace(/\s+/g, ' ').trim();
+            let correctClean = correctQ3.replace(/[^\w\s]/gi, '').replace(/\s+/g, ' ').trim();
 
-            let q3Correct = (studentQ3 === correctQ3) || (studentNoComma === correctNoComma);
+            let q3Correct = (studentQ3 === correctQ3) || (studentClean === correctClean);
 
             let correctCount = (q1Correct ? 1 : 0) + (q2Correct ? 1 : 0) + (q3Correct ? 1 : 0);
             
