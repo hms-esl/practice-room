@@ -367,7 +367,6 @@
         if (taskType === "listening") document.getElementById('listeningControls').style.display = "block";
     }
 
-    // --- NEW: SENTENCE ANALYSIS PARSER ---
     function renderSentenceAnalysisUI(promptText) {
         let container = document.getElementById('saContainer');
         container.innerHTML = "";
@@ -391,12 +390,10 @@
             let sel1 = `<select id="q1_b1" class="sa-select"><option value="">--Select--</option>` + opts1.map(o=>`<option value="${o.replace(/"/g, '&quot;')}">${o}</option>`).join('') + `</select>`;
             let sel2 = `<select id="q1_b2" class="sa-select"><option value="">--Select--</option>` + opts2.map(o=>`<option value="${o.replace(/"/g, '&quot;')}">${o}</option>`).join('') + `</select>`;
             
-            // Smart Regex to catch [BLANK 1], [Blank 1], or _______ lines
             let displayScenario = scenario;
             displayScenario = displayScenario.replace(/\[BLANK\s*1\]|_{3,}/i, sel1);
             displayScenario = displayScenario.replace(/\[BLANK\s*2\]|_{3,}/i, sel2);
             
-            // Failsafe if the AI completely forgot to put blanks in the sentence
             if (!displayScenario.includes('<select')) {
                 displayScenario += `<br><br> ${sel1} &nbsp; ${sel2}`;
             }
@@ -436,7 +433,7 @@
             </div>`;
         }
 
-        // --- Question 3 Parser (Updated for Text Box UI) ---
+        // --- Question 3 Parser ---
         let q3Match = promptText.match(/<Q3>([\s\S]*?)<\/Q3>/);
         if (q3Match) {
             hasSentenceAnalysis = true;
@@ -618,14 +615,12 @@
                             renderSentenceAnalysisUI(saPromptText);
                             openPrompt = currentPrompt.substring(part3Start + "**Part 3: Extended Writing Task:**".length).trim();
                         } else {
-                            // Fallback if AI didn't format perfectly
                             let splitToken = currentPrompt.includes("**Part 3:") ? "**Part 3:" : "**Open-Ended";
                             let parts = currentPrompt.split(splitToken);
                             scafPrompt = parts[0].replace("**Part 1: Scaffolded Task:**", "").trim();
                             if (parts[1]) openPrompt = parts[1].trim();
                         }
                     } else {
-                        // Older lesson fallback
                         let splitToken = currentPrompt.includes("**Open-Ended Challenge:**") ? "**Open-Ended Challenge:**" : null;
                         if (splitToken) {
                             let parts = currentPrompt.split(splitToken);
@@ -651,7 +646,6 @@
         if (document.getElementById('status').innerText === "Connecting to database...") { document.getElementById('status').innerText = ""; }
     }
 
-    // --- Media Recorder Logistics ---
     async function toggleRecording() {
         let btn = document.getElementById('recordBtn');
         let transcriptDisplay = document.getElementById('liveTranscript');
@@ -759,13 +753,12 @@
         }
     }
 
-    // --- UPDATED WRITING SUBMISSION (Validates the new Sentence Analysis Dropdowns/Banks) ---
     async function submitWriting() {
         const text1 = document.getElementById('textResponse').value;
         const text2 = document.getElementById('textResponse2') ? document.getElementById('textResponse2').value : "";
         if (!text1) { alert("Please type your response for Part 1 before submitting."); return; }
         
-        let mcRecord = "";
+        let systemNote = "";
 
         if (hasSentenceAnalysis) {
             let q1b1 = document.getElementById('q1_b1')?.value;
@@ -781,10 +774,14 @@
             let q1Correct = (q1b1.trim() === saAnswers.q1a1.trim() && q1b2.trim() === saAnswers.q1a2.trim());
             let q2Correct = (q2fix.trim() === saAnswers.q2fix.trim() && q2rule.trim() === saAnswers.q2rule.trim());
             
-            // Loose comparison for Q3 chunk building
-            let cleanStudentQ3 = q3ans.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-            let cleanCorrectQ3 = saAnswers.q3ans.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-            let q3Correct = (cleanStudentQ3 === cleanCorrectQ3);
+            // SMART GRADING FOR Q3: Normalized Exact Match
+            // This removes double spaces, ignores capitalization, and ignores trailing punctuation 
+            // so students aren't punished for minor typos, but strictly enforces correct word order.
+            function normalizeForGrading(str) {
+                return str.toLowerCase().replace(/\s+/g, ' ').replace(/[.,!?]$/, '').trim();
+            }
+            
+            let q3Correct = (normalizeForGrading(q3ans) === normalizeForGrading(saAnswers.q3ans));
 
             let correctCount = (q1Correct ? 1 : 0) + (q2Correct ? 1 : 0) + (q3Correct ? 1 : 0);
             
@@ -798,26 +795,29 @@
 
             let fb3 = document.getElementById('sa_fb_3'); fb3.style.display = "block";
             if(q3Correct) { fb3.style.backgroundColor="#EAFAF1"; fb3.innerHTML = "✅ Correct!"; }
-            else { fb3.style.backgroundColor="#FDEDEC"; fb3.innerHTML = `❌ Incorrect. Correct Sentence: <strong>${saAnswers.q3ans}</strong>`; }
+            else { fb3.style.backgroundColor="#FDEDEC"; fb3.innerHTML = `❌ Incorrect. Example Correct Sentence: <strong>${saAnswers.q3ans}</strong>`; }
 
             if (attemptCount === 0 && correctCount < 3) {
                 document.getElementById('status').innerText = "Review Part 2 feedback. You may fix your answers and resubmit!";
                 let btn = document.getElementById('submitWritingBtn');
                 btn.innerText = "Submit Again";
                 attemptCount++;
-                return; // Stop submission to let them fix Part 2
+                return; 
             }
             
-            mcRecord = `\n\n[Part 2 Problem Solving Score: ${correctCount}/3]`;
+            systemNote = `\n\n(System Note: The student also scored ${correctCount}/3 on the auto-graded Part 2 grammar section.)`;
         }
 
         let btn = document.getElementById('submitWritingBtn');
         btn.disabled = true;
         document.getElementById('status').innerText = "Submitting to AI Tutor...";
         
+        // CLEANUP: Remove the raw XML <Q1> <Q2> <Q3> tags from the prompt before sending it to the backend AI grader.
+        let cleanPromptForAI = currentPrompt.replace(/<Q[1-3]>[\s\S]*?<\/Q[1-3]>/gi, '').trim();
+
         const payload = { 
-            studentId, lessonId, submissionId, targetTopic, prompt: currentPrompt, 
-            text: text1 + mcRecord, text2: text2, taskType: taskTypeParam, type: "assessment" 
+            studentId, lessonId, submissionId, targetTopic, prompt: cleanPromptForAI, 
+            text: text1 + systemNote, text2: text2, taskType: taskTypeParam, type: "assessment" 
         };
         
         try {
