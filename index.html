@@ -569,11 +569,11 @@
                         if (options.length > 0) {
                             mcQuestionCount++;
                             let safeAttrText = qText.trim().replace(/"/g, '&quot;').replace(/'/g, "\\'");
-                            html += `<div class="mc-question" id="diagBlock_${mcQuestionCount}">
-                                        <div style="display:flex; align-items:flex-start;">
-                                            <button class="action-btn" style="padding: 5px 10px; margin-right: 15px;" data-qtext="${safeAttrText}" onclick="toggleSpeak(this.dataset.qtext, 'btnDiagQ${mcQuestionCount}', '🔊 Listen')">🔊 Listen</button>
-                                            <div class="q-text" style="margin: 0;">${parseMarkdown(qText.trim())}</div>
-                                        </div><div class="spacer-line"></div>`;
+                html += `<div class="mc-question" id="diagBlock_${mcQuestionCount}">
+            <div style="display:flex; align-items:flex-start;">
+                <button class="action-btn" id="btnDiagQ${mcQuestionCount}" style="padding: 5px 10px; margin-right: 15px;" data-qtext="${safeAttrText}" onclick="toggleSpeak(this.dataset.qtext, 'btnDiagQ${mcQuestionCount}', '🔊 Listen')">🔊 Listen</button>
+                <div class="q-text" style="margin: 0;">${parseMarkdown(qText.trim())}</div>
+            </div><div class="spacer-line"></div>`;
                             for (let opt of options) {
                                 html += `<label class="mc-option"><input type="radio" name="diag_question_${mcQuestionCount}" value="${opt.replace(/"/g, '&quot;')}"> ${parseMarkdown(opt)}</label>`;
                             }
