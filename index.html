@@ -904,12 +904,16 @@
             let q1Correct = (q1b1.trim() === saAnswers.q1a1.trim() && q1b2.trim() === saAnswers.q1a2.trim());
             let q2Correct = (q2fix.trim() === saAnswers.q2fix.trim() && q2rule.trim() === saAnswers.q2rule.trim());
             
-            // SMART GRADING FOR Q3: Respects Punctuation, Fixes Invisible Formatting Bugs
-            // Removes invisible carriage returns (\r) and collapses extra spaces, but KEEPS punctuation and is case-insensitive.
-            let cleanStudentQ3 = q3ans.replace(/[\r\n]+/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
-            let cleanCorrectQ3 = saAnswers.q3ans.replace(/[\r\n]+/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
-            
-            let q3Correct = (cleanStudentQ3 === cleanCorrectQ3);
+            // SMART GRADING FOR Q3: Respects Grammar, Fixes Invisible Formatting, & Allows Proper Commas
+            let studentQ3 = q3ans.replace(/[\r\n]+/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+            let correctQ3 = saAnswers.q3ans.replace(/[\r\n]+/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+
+            // NEW: Comma-Agnostic Check 
+            // This allows the student to include a comma before "so" or "but" even if the AI forgot it in the Answer Key
+            let studentNoComma = studentQ3.replace(/,/g, '');
+            let correctNoComma = correctQ3.replace(/,/g, '');
+
+            let q3Correct = (studentQ3 === correctQ3) || (studentNoComma === correctNoComma);
 
             let correctCount = (q1Correct ? 1 : 0) + (q2Correct ? 1 : 0) + (q3Correct ? 1 : 0);
             
@@ -923,7 +927,6 @@
 
             let fb3 = document.getElementById('sa_fb_3'); fb3.style.display = "block";
             
-            // Re-format the display answer so the student sees exactly what they need to type (without the invisible \r)
             let displayCorrectQ3 = saAnswers.q3ans.replace(/[\r\n]+/g, '').replace(/\s+/g, ' ').trim();
             
             if(q3Correct) { fb3.style.backgroundColor="#EAFAF1"; fb3.innerHTML = "✅ Correct!"; }
