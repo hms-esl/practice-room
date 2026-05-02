@@ -372,7 +372,6 @@
         hasSentenceAnalysis = false;
         saReadAloudText = "Part 2. Sentence Analysis. ";
         
-        // --- Question 1 Parser ---
         let q1Match = promptText.match(/<Q1>([\s\S]*?)<\/Q1>/);
         if (q1Match) {
             hasSentenceAnalysis = true;
@@ -407,7 +406,6 @@
             saReadAloudText += `Question 1. Logical Linker. Scenario: ${audioScenario}. Options for blank one are: ${opts1.join(", ")}. Options for blank two are: ${opts2.join(", ")}. `;
         }
 
-        // --- Question 2 Parser ---
         let q2Match = promptText.match(/<Q2>([\s\S]*?)<\/Q2>/);
         if (q2Match) {
             hasSentenceAnalysis = true;
@@ -437,7 +435,6 @@
             saReadAloudText += `Question 2. Be the Teacher. Student Sentence: ${sentence}. Options to fix the error are: ${optsFix.join(", ")}. Options for why it was wrong are: ${optsRule.join(", ")}. `;
         }
 
-        // --- Question 3 Parser ---
         let q3Match = promptText.match(/<Q3>([\s\S]*?)<\/Q3>/);
         if (q3Match) {
             hasSentenceAnalysis = true;
@@ -569,11 +566,11 @@
                         if (options.length > 0) {
                             mcQuestionCount++;
                             let safeAttrText = qText.trim().replace(/"/g, '&quot;').replace(/'/g, "\\'");
-                html += `<div class="mc-question" id="diagBlock_${mcQuestionCount}">
-            <div style="display:flex; align-items:flex-start;">
-                <button class="action-btn" id="btnDiagQ${mcQuestionCount}" style="padding: 5px 10px; margin-right: 15px;" data-qtext="${safeAttrText}" onclick="toggleSpeak(this.dataset.qtext, 'btnDiagQ${mcQuestionCount}', '🔊 Listen')">🔊 Listen</button>
-                <div class="q-text" style="margin: 0;">${parseMarkdown(qText.trim())}</div>
-            </div><div class="spacer-line"></div>`;
+                            html += `<div class="mc-question" id="diagBlock_${mcQuestionCount}">
+                                        <div style="display:flex; align-items:flex-start;">
+                                            <button class="action-btn" id="btnDiagQ${mcQuestionCount}" style="padding: 5px 10px; margin-right: 15px;" data-qtext="${safeAttrText}" onclick="toggleSpeak(this.dataset.qtext, 'btnDiagQ${mcQuestionCount}', '🔊 Listen')">🔊 Listen</button>
+                                            <div class="q-text" style="margin: 0;">${parseMarkdown(qText.trim())}</div>
+                                        </div><div class="spacer-line"></div>`;
                             for (let opt of options) {
                                 html += `<label class="mc-option"><input type="radio" name="diag_question_${mcQuestionCount}" value="${opt.replace(/"/g, '&quot;')}"> ${parseMarkdown(opt)}</label>`;
                             }
@@ -656,18 +653,24 @@
     async function toggleRecording() {
         let btn = document.getElementById('recordBtn');
         let transcriptDisplay = document.getElementById('liveTranscript');
+        
         if (isRecording) {
-            isRecording = false;
-            btn.classList.remove("recording");
-            btn.innerText = "🎤 Start Recording";
-            document.getElementById('status').innerText = "Processing audio...";
-            
-            if (recognition) recognition.stop();
-            if (mediaRecorder && mediaRecorder.state !== "inactive") { 
-                try { mediaRecorder.requestData(); } catch(e){}
-                mediaRecorder.stop(); 
-                if (mediaRecorder.stream) mediaRecorder.stream.getTracks().forEach(t => t.stop());
+            // STOPPED: Give the AI half a second to finish transcribing the last word
+            if(recognition) {
+                recognition.stop();
+                document.getElementById('status').innerText = "Finalizing text...";
             }
+            setTimeout(() => {
+                if(mediaRecorder && mediaRecorder.state !== "inactive") { 
+                    try { mediaRecorder.requestData(); } catch(e){}
+                    mediaRecorder.stop(); 
+                    if (mediaRecorder.stream) mediaRecorder.stream.getTracks().forEach(t => t.stop());
+                }
+                isRecording = false;
+                btn.classList.remove("recording");
+                btn.innerText = "🎤 Start Recording";
+                document.getElementById('status').innerText = "Processing audio...";
+            }, 500);
         } else {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -690,17 +693,17 @@
                         reader.readAsDataURL(audioBlob);
                         reader.onloadend = () => {
                             const base64Audio = reader.result.split(',')[1];
-                            submitAudioTask(finalTranscript, base64Audio, mimeType);
+                            submitAudioTask(finalTranscript.trim(), base64Audio, mimeType);
                         };
                     } else {
-                        submitAudioTask(finalTranscript, "", mimeType);
+                        submitAudioTask(finalTranscript.trim(), "", mimeType);
                     }
                 });
 
                 mediaRecorder.start(); 
                 isRecording = true;
                 btn.classList.add("recording");
-                btn.innerText = "⏹️ Stop Recording";
+                btn.innerText = "⏹️ Stop & Submit";
                 document.getElementById('status').innerText = "Recording...";
 
                 setTimeout(() => {
@@ -735,21 +738,25 @@
     async function toggleDiagRecording() {
         let btn = document.getElementById('diagRecordBtn');
         let transcriptDisplay = document.getElementById('diagLiveTranscript');
+        
         if (diagRecording) {
-            diagRecording = false;
-            btn.classList.remove("recording");
-            btn.innerText = "✅ Reading Complete";
-            btn.disabled = true;
-            document.getElementById('status').innerText = "Audio captured! Please answer the questions below.";
-            
-            if (diagRecognition) diagRecognition.stop();
-            if (diagMediaRecorder && diagMediaRecorder.state !== "inactive") { 
-                try { diagMediaRecorder.requestData(); } catch(e){}
-                diagMediaRecorder.stop(); 
-                if (diagMediaRecorder.stream) diagMediaRecorder.stream.getTracks().forEach(t => t.stop());
+            // STOPPED: Give the AI half a second to finish transcribing the last word
+            if (diagRecognition) {
+                diagRecognition.stop();
             }
-            
-            document.getElementById('diagnosticMCSection').style.display = "block";
+            setTimeout(() => {
+                if (diagMediaRecorder && diagMediaRecorder.state !== "inactive") { 
+                    try { diagMediaRecorder.requestData(); } catch(e){}
+                    diagMediaRecorder.stop(); 
+                    if (diagMediaRecorder.stream) diagMediaRecorder.stream.getTracks().forEach(t => t.stop());
+                }
+                diagRecording = false;
+                btn.classList.remove("recording");
+                btn.innerText = "✅ Reading Complete";
+                btn.disabled = true;
+                document.getElementById('status').innerText = "Audio captured! Please answer the questions below.";
+                document.getElementById('diagnosticMCSection').style.display = "block";
+            }, 500);
         } else {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -798,7 +805,7 @@
                                 else interim += event.results[i][0].transcript;
                             }
                             transcriptDisplay.innerText = diagFinalTranscript + interim;
-                            window.diagTranscript = diagFinalTranscript;
+                            window.diagTranscript = diagFinalTranscript.trim();
                         };
                         diagRecognition.start();
                     } else {
@@ -904,13 +911,11 @@
             let q1Correct = (q1b1.trim() === saAnswers.q1a1.trim() && q1b2.trim() === saAnswers.q1a2.trim());
             let q2Correct = (q2fix.trim() === saAnswers.q2fix.trim() && q2rule.trim() === saAnswers.q2rule.trim());
             
-   // SMART GRADING FOR Q3: Respects Grammar, Fixes Invisible Formatting, & Ignores Punctuation Differences
+            // SMART GRADING FOR Q3: Respects Grammar, Fixes Invisible Formatting, & Ignores Punctuation Differences
             let studentQ3 = q3ans.replace(/[\r\n]+/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
             let correctQ3 = saAnswers.q3ans.replace(/[\r\n]+/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
 
-            // NEW: Punctuation-Agnostic Check 
-            // This strips all punctuation (commas, periods, etc.) and collapses spaces 
-            // to check if the core words match perfectly.
+            // Punctuation-Agnostic Check 
             let studentClean = studentQ3.replace(/[^\w\s]/gi, '').replace(/\s+/g, ' ').trim();
             let correctClean = correctQ3.replace(/[^\w\s]/gi, '').replace(/\s+/g, ' ').trim();
 
