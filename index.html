@@ -188,7 +188,11 @@
     const currentVocabId = urlParams.get('vocabId') || ""; 
     const isVocabQuiz = urlParams.get('vocabQuiz') || "false";
     
-    const submissionId = "sub_" + new Date().getTime();
+    // Generate Standardized Submission ID
+const now = new Date();
+const datePart = `${now.getMonth() + 1}/${now.getDate()}/${now.getFullYear()}`;
+const timePart = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+const submissionId = `Sub_${datePart} ${timePart}_${studentId}`;
     
     let currentPrompt = "Tell me about what you learned today.";
     let targetTopic = "";
