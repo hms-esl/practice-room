@@ -432,7 +432,8 @@
         let q1Match = promptText.match(/<Q1>([\s\S]*?)<\/Q1>/);
         if (q1Match) {
             hasSentenceAnalysis = true; let data = q1Match[1];
-            let scenario = (data.match(/Scenario:\s*(.*)/) || [])[1] || "";
+            // FIXED: Using "Sentence:" instead of "Scenario:" to match spreadsheet
+            let scenario = (data.match(/Sentence:\s*(.*)/) || [])[1] || "";
             let b1 = (data.match(/Bank 1:\s*(.*)/) || [])[1] || "";
             let b2 = (data.match(/Bank 2:\s*(.*)/) || [])[1] || "";
             saAnswers.q1a1 = (data.match(/Answer 1:\s*(.*)/) || [])[1] || "";
@@ -445,7 +446,7 @@
             displayScenario = displayScenario.replace(/\[BLANK\s*1\]|_{3,}/i, sel1).replace(/\[BLANK\s*2\]|_{3,}/i, sel2);
             if (!displayScenario.includes('<select')) displayScenario += `<br><br> ${sel1} &nbsp; ${sel2}`;
             html += `<div class="sa-card"><div class="q-text">1. Logical Linker</div><div style="line-height:2.2; font-size:1.1em;">${parseMarkdown(displayScenario)}</div><div id="sa_fb_1" class="mc-feedback"></div></div>`;
-            saReadAloudText += `Question 1. Logical Linker. Scenario: ${scenario.replace(/\[BLANK\s*1\]|_{3,}/gi, "blank one").replace(/\[BLANK\s*2\]|_{3,}/gi, "blank two")}. Options for blank one are: ${opts1.join(", ")}. Options for blank two are: ${opts2.join(", ")}. `;
+            saReadAloudText += `Question 1. Logical Linker. Sentence: ${scenario.replace(/\[BLANK\s*1\]|_{3,}/gi, "blank one").replace(/\[BLANK\s*2\]|_{3,}/gi, "blank two")}. Options for blank one are: ${opts1.join(", ")}. Options for blank two are: ${opts2.join(", ")}. `;
         }
 
         let q2Match = promptText.match(/<Q2>([\s\S]*?)<\/Q2>/);
