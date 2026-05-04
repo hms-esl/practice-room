@@ -229,8 +229,7 @@
     
     const urlParams = new URLSearchParams(window.location.search);
     const studentId = urlParams.get('studentId') || "UnknownStudent";
-    // Fixed: Now gracefully handles standard lesson IDs AND Diagnostic Test IDs 
-    let lessonId = urlParams.get('lessonId') || urlParams.get('LessonId') || urlParams.get('testId') || urlParams.get('TestID') || "UnknownLesson";
+    const lessonId = urlParams.get('lessonId') || urlParams.get('LessonId') || urlParams.get('testId') || urlParams.get('TestID') || "UnknownLesson";
     const taskTypeParam = (urlParams.get('taskType') || "speaking").toLowerCase().trim();
     let currentVocabId = urlParams.get('vocabId') || ""; 
     const isVocabQuiz = urlParams.get('vocabQuiz') || "false";
@@ -368,7 +367,6 @@
             const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
             const result = await response.json();
             
-            // Fixed: Added the custom Read Aloud button for the AI's complex explanation
             let cleanMorph = (result.reply || "").replace(/<[^>]+>/g, '').replace(/[\*\_]/g, '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
             box.innerHTML = `<strong>Morphology Analysis:</strong><br>${parseMarkdown(result.reply)}<br>
                              <button class="action-btn" style="margin-top:15px; padding: 6px 12px; font-size: 0.9em; width: auto; background-color: #3498DB;" 
@@ -615,8 +613,16 @@
                     currentPrompt = lessonText; 
 
                 } else if (taskTypeParam === "listening" || taskTypeParam === "comprehension" || taskTypeParam === "vocabquiz") {
-                    let endTag = taskTypeParam === "listening" ? "❓ COMPREHENSION TASK" : "🗣️ SPEAKING TASK";
-                    let raw = getSection(taskTypeParam === "listening" ? "🎧 LISTENING TASK" : "❓ COMPREHENSION TASK", endTag) || currentPrompt;
+                    
+                    // FIXED: Safe End Tag Logic for Vocab Quizzes vs Normal Lessons
+                    let endTag = null;
+                    if (taskTypeParam === "listening") endTag = "❓ COMPREHENSION TASK";
+                    else if (taskTypeParam === "comprehension") endTag = "🗣️ SPEAKING TASK";
+                    // vocabquiz naturally has no end tag because it goes to the bottom of the string
+                    
+                    let startTag = taskTypeParam === "listening" ? "🎧 LISTENING TASK" : "❓ COMPREHENSION TASK";
+                    let raw = getSection(startTag, endTag) || currentPrompt;
+                    
                     if (raw.includes("Answer Key:")) {
                         let parts = raw.split("Answer Key:");
                         currentPrompt = parts[0].trim();
