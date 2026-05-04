@@ -614,7 +614,7 @@
                     document.getElementById('diagnosticUI').style.display = "block";
                     currentPrompt = lessonText; 
 
-                } else if (taskTypeParam === "listening" || taskTypeParam === "comprehension") {
+                } else if (taskTypeParam === "listening" || taskTypeParam === "comprehension" || taskTypeParam === "vocabquiz") {
                     let endTag = taskTypeParam === "listening" ? "❓ COMPREHENSION TASK" : "🗣️ SPEAKING TASK";
                     let raw = getSection(taskTypeParam === "listening" ? "🎧 LISTENING TASK" : "❓ COMPREHENSION TASK", endTag) || currentPrompt;
                     if (raw.includes("Answer Key:")) {
