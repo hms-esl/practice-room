@@ -229,7 +229,8 @@
     
     const urlParams = new URLSearchParams(window.location.search);
     const studentId = urlParams.get('studentId') || "UnknownStudent";
-    let lessonId = urlParams.get('lessonId') || "UnknownLesson";
+    // Fixed: Now gracefully handles standard lesson IDs AND Diagnostic Test IDs 
+    let lessonId = urlParams.get('lessonId') || urlParams.get('LessonId') || urlParams.get('testId') || urlParams.get('TestID') || "UnknownLesson";
     const taskTypeParam = (urlParams.get('taskType') || "speaking").toLowerCase().trim();
     let currentVocabId = urlParams.get('vocabId') || ""; 
     const isVocabQuiz = urlParams.get('vocabQuiz') || "false";
@@ -366,7 +367,15 @@
         try {
             const response = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
             const result = await response.json();
-            box.innerHTML = `<strong>Morphology Analysis:</strong><br>${parseMarkdown(result.reply)}`;
+            
+            // Fixed: Added the custom Read Aloud button for the AI's complex explanation
+            let cleanMorph = (result.reply || "").replace(/<[^>]+>/g, '').replace(/[\*\_]/g, '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            box.innerHTML = `<strong>Morphology Analysis:</strong><br>${parseMarkdown(result.reply)}<br>
+                             <button class="action-btn" style="margin-top:15px; padding: 6px 12px; font-size: 0.9em; width: auto; background-color: #3498DB;" 
+                                     onclick="toggleSpeak(this.dataset.text, this.id, '🔊 Read Analysis')" 
+                                     data-text="${cleanMorph}" id="btnReadMorph_${Date.now()}">
+                                 🔊 Read Analysis
+                             </button>`;
         } catch(e) {
             box.innerHTML = "<em>Error analyzing word parts. Please try again.</em>";
         } finally {
@@ -432,7 +441,6 @@
         let q1Match = promptText.match(/<Q1>([\s\S]*?)<\/Q1>/);
         if (q1Match) {
             hasSentenceAnalysis = true; let data = q1Match[1];
-            // FIXED: Using "Sentence:" instead of "Scenario:" to match spreadsheet
             let scenario = (data.match(/Sentence:\s*(.*)/) || [])[1] || "";
             let b1 = (data.match(/Bank 1:\s*(.*)/) || [])[1] || "";
             let b2 = (data.match(/Bank 2:\s*(.*)/) || [])[1] || "";
@@ -960,7 +968,7 @@
             // Update UI status directly
             document.getElementById('vt_status').innerText = result.status.includes('Mastered') ? "✅ Mastered" : "🔄 Relearning";
             
-            document.getElementById('status').innerText = "Task Complete! You may close this tab.";
+            document.getElementById('status').innerText = "Task Complete! Return to AppSheet and click the 'Sync' icon to see your Mastered words update.";
         } catch(e) {
             document.getElementById('status').innerText = "Error submitting task. Please check your connection.";
         } finally {
