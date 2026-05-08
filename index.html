@@ -229,8 +229,10 @@
     
     const urlParams = new URLSearchParams(window.location.search);
     const studentId = urlParams.get('studentId') || "UnknownStudent";
-    const lessonId = urlParams.get('lessonId') || urlParams.get('LessonId') || urlParams.get('testId') || urlParams.get('TestID') || "UnknownLesson";
-    const taskTypeParam = (urlParams.get('taskType') || "speaking").toLowerCase().trim();
+    const lessonId = urlParams.get('lessonId') || urlParams.get('LessonId') || urlParams.get('testId') || urlParams.get('TestID') || "VocabQuiz";
+    
+    // FIX: Aggressive character stripping ensures space typos in URL don't break the frontend routing
+    const taskTypeParam = (urlParams.get('taskType') || "speaking").toLowerCase().replace(/[^a-z0-9]/g, '');
     let currentVocabId = urlParams.get('vocabId') || ""; 
     const isVocabQuiz = urlParams.get('vocabQuiz') || "false";
     
@@ -614,11 +616,9 @@
 
                 } else if (taskTypeParam === "listening" || taskTypeParam === "comprehension" || taskTypeParam === "vocabquiz") {
                     
-                    // FIXED: Safe End Tag Logic for Vocab Quizzes vs Normal Lessons
                     let endTag = null;
                     if (taskTypeParam === "listening") endTag = "❓ COMPREHENSION TASK";
                     else if (taskTypeParam === "comprehension") endTag = "🗣️ SPEAKING TASK";
-                    // vocabquiz naturally has no end tag because it goes to the bottom of the string
                     
                     let startTag = taskTypeParam === "listening" ? "🎧 LISTENING TASK" : "❓ COMPREHENSION TASK";
                     let raw = getSection(startTag, endTag) || currentPrompt;
