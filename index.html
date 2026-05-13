@@ -263,13 +263,12 @@ function getBestVoice() {
         const voices = window.speechSynthesis.getVoices();
         if (!voices || voices.length === 0) return null;
 
-        // It looks through the browser's voices and picks the most natural English one it can find
+        // This checks for exact Mac voice names in order of preference
         let bestVoice = 
-            voices.find(v => v.name.includes('Google US English')) || 
-            voices.find(v => v.name.includes('Microsoft Aria Online')) || 
-            voices.find(v => v.name.includes('Samantha')) || // Good natural Mac voice
-            voices.find(v => v.lang === 'en-US' && v.name.includes('Premium')) ||
-            voices.find(v => v.lang === 'en-US'); // Fallback to basic US English
+            voices.find(v => v.name.includes('Tom')) ||       // Target Mac's "Tom" voice
+            voices.find(v => v.name.includes('Samantha')) ||  // Fallback to "Samantha"
+            voices.find(v => v.name.includes('Alex')) ||      // Fallback to "Alex"
+            voices.find(v => v.lang === 'en-US');             // Final safety fallback
             
         return bestVoice || voices[0];
     }
