@@ -259,6 +259,20 @@
     let hasSentenceAnalysis = false;
     let saReadAloudText = "";
 
+function getBestVoice() {
+        const voices = window.speechSynthesis.getVoices();
+        if (!voices || voices.length === 0) return null;
+
+        // This checks for exact Mac voice names in order of preference
+        let bestVoice = 
+            voices.find(v => v.name.includes('Tom')) ||       // Target Mac's "Tom" voice
+            voices.find(v => v.name.includes('Samantha')) ||  // Fallback to "Samantha"
+            voices.find(v => v.name.includes('Alex')) ||      // Fallback to "Alex"
+            voices.find(v => v.lang === 'en-US');             // Final safety fallback
+            
+        return bestVoice || voices[0];
+    }
+    
     function parseMarkdown(text) {
         if (!text) return "";
         return text.replace(/\*\*([\s\S]*?)\*\*/g, '<strong>$1</strong>').replace(/\*([\s\S]*?)\*/g, '<em>$1</em>').replace(/<\/?QUESTION>/gi, '');
@@ -277,7 +291,7 @@
         </table>`;
     }
 
-    function toggleTopReadAloud() {
+   function toggleTopReadAloud() {
         const btn = document.getElementById('topReadAloudBtn');
         if (isReadingTop && window.speechSynthesis.speaking) {
             window.speechSynthesis.cancel();
@@ -290,7 +304,14 @@
         if (!contextBox) return;
         let textToRead = contextBox.innerText; 
         textToRead = textToRead.replace(/\*/g, '');
+        
         const utterance = new SpeechSynthesisUtterance(textToRead);
+        
+        // --- NEW VOICE SELECTION ---
+        const selectedVoice = getBestVoice();
+        if (selectedVoice) utterance.voice = selectedVoice;
+        // ---------------------------
+
         utterance.onend = function() { isReadingTop = false; if(btn) btn.innerHTML = "🔊 Read Aloud"; };
         isReadingTop = true;
         btn.innerHTML = "⏹ Stop Reading";
@@ -312,7 +333,14 @@
             if(oldBtn) oldBtn.innerHTML = oldBtn.dataset.defaultText;
         }
         let cleanText = text.replace(/<[^>]+>/g, '').replace(/\*/g, ''); 
+        
         const utterance = new SpeechSynthesisUtterance(cleanText);
+        
+        // --- NEW VOICE SELECTION ---
+        const selectedVoice = getBestVoice();
+        if (selectedVoice) utterance.voice = selectedVoice;
+        // ---------------------------
+
         utterance.onend = () => { 
             if(btnElement) btnElement.innerHTML = defaultText; 
             isSpeaking = false; 
